@@ -1,0 +1,45 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Build outputs
+/backend/build/
+/backend/out/
+/backend/target/
+/frontend/dist/
+/frontend/build/
+
+# Dependencies
+/frontend/node_modules/
+/backend/.gradle/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+
+# Uploads
+/uploads/
+/backend/uploads/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
