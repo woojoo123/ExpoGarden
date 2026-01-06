@@ -117,7 +117,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
     game.scene.start('MainScene', {
       booths: booths,
       onBoothInteract: handleBoothClick,
-      selectedCharacter: user?.selectedCharacter || 'character', // 기본값: character
+      selectedCharacter: user?.selectedCharacter, // JSON 문자열 형태의 AvatarConfig
     });
 
     // 윈도우 리사이즈 핸들링
@@ -149,7 +149,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
       scene.scene.restart({
         booths: booths,
         onBoothInteract: handleBoothClick,
-        selectedCharacter: user?.selectedCharacter || 'character',
+        selectedCharacter: user?.selectedCharacter,
       });
     }
   }, [characterChangedTrigger, user?.selectedCharacter, booths]);

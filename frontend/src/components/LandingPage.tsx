@@ -9,7 +9,8 @@ export const LandingPage: React.FC = () => {
 
   const handleEnterMetaverse = () => {
     if (!user) {
-      // 로그인 필요
+      // 로그인 필요 - 메타버스 입장 의도로 로그인
+      localStorage.setItem('returnTo', 'metaverse');
       window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
     } else {
       // 이미 로그인됨 → 캐릭터 선택으로
@@ -18,6 +19,8 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleLogin = () => {
+    // 헤더 로그인 - 메인으로 복귀
+    localStorage.setItem('returnTo', 'main');
     window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
   };
 
@@ -39,6 +42,21 @@ export const LandingPage: React.FC = () => {
           <a href="#features" style={styles.navLink}>소개</a>
           <a href="#about" style={styles.navLink}>서비스</a>
           <a href="#contact" style={styles.navLink}>문의</a>
+          {user && (
+            <>
+              <button onClick={() => navigate('/my/booths')} style={styles.navButton}>
+                📋 내 부스
+              </button>
+              <button onClick={() => navigate('/my/booths/new')} style={styles.navButton}>
+                ➕ 부스 신청
+              </button>
+              {user.role === 'ADMIN' && (
+                <button onClick={() => navigate('/admin/booths')} style={styles.navButton}>
+                  🛡️ 관리자
+                </button>
+              )}
+            </>
+          )}
           {user ? (
             <div style={styles.userInfo}>
               <span style={styles.userName}>{user.nickname}</span>
@@ -88,18 +106,56 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div style={styles.rightPanel}>
-            <div style={styles.previewCard}>
-              <h2 style={styles.previewTitle}>ExpoGarden 메타버스에 오신걸 환영합니다</h2>
-              <div style={styles.previewImage}>
-                <div style={styles.previewPlaceholder}>
-                  <span style={styles.previewIcon}>🎮</span>
-                  <p style={styles.previewText}>2D 메타버스로 구현된 전시 공간</p>
+            {user ? (
+              // 로그인 상태 - 빠른 실행 카드
+              <div style={styles.quickActionsCard}>
+                <h2 style={styles.welcomeTitle}>안녕하세요, {user.nickname}님! 👋</h2>
+                <p style={styles.welcomeSubtitle}>무엇을 하시겠어요?</p>
+                
+                <div style={styles.actionButtons}>
+                  <button onClick={() => navigate('/my/booths')} style={styles.actionCard}>
+                    <span style={styles.actionIcon}>📋</span>
+                    <h3 style={styles.actionTitle}>내 부스 관리</h3>
+                    <p style={styles.actionDesc}>운영 중인 부스를 관리하세요</p>
+                  </button>
+                  
+                  <button onClick={() => navigate('/my/booths/new')} style={styles.actionCard}>
+                    <span style={styles.actionIcon}>➕</span>
+                    <h3 style={styles.actionTitle}>부스 신청하기</h3>
+                    <p style={styles.actionDesc}>새로운 부스를 만들어보세요</p>
+                  </button>
+                  
+                  <button onClick={handleEnterMetaverse} style={styles.actionCard}>
+                    <span style={styles.actionIcon}>🎮</span>
+                    <h3 style={styles.actionTitle}>메타버스 입장</h3>
+                    <p style={styles.actionDesc}>전시회를 둘러보세요</p>
+                  </button>
+                  
+                  {user.role === 'ADMIN' && (
+                    <button onClick={() => navigate('/admin/statistics')} style={styles.actionCard}>
+                      <span style={styles.actionIcon}>📊</span>
+                      <h3 style={styles.actionTitle}>통계 보기</h3>
+                      <p style={styles.actionDesc}>전시회 통계를 확인하세요</p>
+                    </button>
+                  )}
                 </div>
               </div>
-              <button onClick={handleEnterMetaverse} style={styles.enterBtn}>
-                메타버스 입장하기 👉
-              </button>
-            </div>
+            ) : (
+              // 비로그인 상태 - 메타버스 입장 카드
+              <div style={styles.previewCard}>
+                <h2 style={styles.previewTitle}>ExpoGarden 메타버스에 오신걸 환영합니다</h2>
+                <div style={styles.previewImage}>
+                  <div style={styles.previewPlaceholder}>
+                    <span style={styles.previewIcon}>🎮</span>
+                    <p style={styles.previewText}>2D 메타버스로 구현된 전시 공간</p>
+                  </div>
+                </div>
+                <button onClick={handleEnterMetaverse} style={styles.enterBtn}>
+                  메타버스 입장하기 👉
+                </button>
+                <p style={styles.loginHint}>※ 로그인이 필요합니다</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -183,6 +239,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#666',
     textDecoration: 'none',
     fontWeight: '500',
+  },
+  navButton: {
+    padding: '8px 16px',
+    backgroundColor: 'transparent',
+    color: '#666',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
   loginBtn: {
     padding: '10px 24px',
@@ -390,6 +457,67 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     color: '#aaa',
     margin: 0,
+  },
+  // 빠른 실행 카드 스타일
+  quickActionsCard: {
+    backgroundColor: '#fff',
+    borderRadius: '20px',
+    padding: '40px',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+    width: '100%',
+    maxWidth: '600px',
+  },
+  welcomeTitle: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: '8px',
+  },
+  welcomeSubtitle: {
+    fontSize: '16px',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: '32px',
+  },
+  actionButtons: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '16px',
+  },
+  actionCard: {
+    backgroundColor: '#f8f9fa',
+    border: '2px solid transparent',
+    borderRadius: '16px',
+    padding: '24px',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  actionIcon: {
+    fontSize: '48px',
+    marginBottom: '8px',
+  },
+  actionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#333',
+    margin: 0,
+  },
+  actionDesc: {
+    fontSize: '13px',
+    color: '#666',
+    margin: 0,
+  },
+  loginHint: {
+    fontSize: '14px',
+    color: '#999',
+    textAlign: 'center',
+    marginTop: '12px',
   },
 };
 

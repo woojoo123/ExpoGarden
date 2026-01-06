@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import type { Booth } from '@/types';
-import { getCharacterFile } from '@/constants/characters';
+import { stringToAvatarConfig, type AvatarConfig, type Direction } from '@/constants/characters';
+import { TopDownAvatar } from './TopDownAvatar';
 
 export class MainScene extends Phaser.Scene {
-  private player!: Phaser.Physics.Arcade.Sprite;
+  private player!: TopDownAvatar; // Sprite에서 TopDownAvatar로 변경
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
@@ -16,25 +17,41 @@ export class MainScene extends Phaser.Scene {
   private nearbyBooth: Booth | null = null;
   private onBoothInteract?: (booth: Booth) => void;
   private interactionText!: Phaser.GameObjects.Text;
-  private selectedCharacter: string = 'character1';
+  private avatarConfig!: AvatarConfig;
 
   constructor() {
     super({ key: 'MainScene' });
   }
 
-  init(data: { booths: Booth[]; onBoothInteract: (booth: Booth) => void; selectedCharacter?: string }) {
+  init(data: { 
+    booths: Booth[]; 
+    onBoothInteract: (booth: Booth) => void; 
+    selectedCharacter?: string; 
+  }) {
     this.booths = data.booths;
     this.onBoothInteract = data.onBoothInteract;
-    this.selectedCharacter = data.selectedCharacter || 'character1';
+    
+    // selectedCharacter는 이제 JSON 문자열 형태의 AvatarConfig
+    this.avatarConfig = stringToAvatarConfig(data.selectedCharacter);
   }
 
   preload() {
-    // 선택된 캐릭터 스프라이트 시트 로드
-    const characterFile = getCharacterFile(this.selectedCharacter);
-    this.load.spritesheet('character', `/assets/characters/${characterFile}`, {
-      frameWidth: 16,
-      frameHeight: 16,
-    });
+    // 파츠별 스프라이트 시트 로드 (48x48, 16프레임)
+    const frameConfig = { frameWidth: 48, frameHeight: 48 };
+
+    // Body (체형)
+    this.load.spritesheet('body_male', '/assets/characters/parts/body_male.png', frameConfig);
+    this.load.spritesheet('body_female', '/assets/characters/parts/body_female.png', frameConfig);
+
+    // Hair (헤어스타일)
+    this.load.spritesheet('hair_01', '/assets/characters/parts/hair_01.png', frameConfig);
+    this.load.spritesheet('hair_02', '/assets/characters/parts/hair_02.png', frameConfig);
+    this.load.spritesheet('hair_03', '/assets/characters/parts/hair_03.png', frameConfig);
+
+    // 상의/하의/신발
+    this.load.spritesheet('top_base', '/assets/characters/parts/top_base.png', frameConfig);
+    this.load.spritesheet('bottom_base', '/assets/characters/parts/bottom_base.png', frameConfig);
+    this.load.spritesheet('shoes_base', '/assets/characters/parts/shoes_base.png', frameConfig);
   }
 
   create() {
@@ -54,15 +71,13 @@ export class MainScene extends Phaser.Scene {
     }
     graphics.strokePath();
 
-    // 플레이어 생성 (스프라이트 시트 사용)
-    // 첫 번째 캐릭터 (빨간 머리) 사용, 프레임 0 = 아래 방향 정지
-    this.player = this.physics.add.sprite(400, 300, 'character', 0);
-    this.player.setCollideWorldBounds(true);
-    this.player.setDepth(10);
-    this.player.setScale(2.5); // 16x16을 확대 (40x40으로)
-
     // 애니메이션 생성
     this.createAnimations();
+
+    // 플레이어(아바타) 생성
+    this.player = new TopDownAvatar(this, 400, 300, this.avatarConfig);
+    this.player.setDepth(10);
+    this.player.setScale(2); // 48x48을 2배 확대 (96x96)
 
     // 부스 생성
     this.createBooths();
@@ -85,7 +100,7 @@ export class MainScene extends Phaser.Scene {
 
     // 카메라 설정
     this.cameras.main.setBounds(0, 0, 3000, 2000);
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.startFollow(this.player.container, true, 0.1, 0.1);
     this.cameras.main.setZoom(1.5);
 
     // 상호작용 텍스트
@@ -104,64 +119,30 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // popotachars 스프라이트 시트 레이아웃:
-    // 각 캐릭터는 12프레임 (0-11)
-    // 0-2: 아래 방향, 3-5: 왼쪽, 6-8: 오른쪽, 9-11: 위
+    // 파츠 레이어 시스템에서는 body에만 애니메이션을 정의하고,
+    // 나머지 파츠는 프레임 동기화로 처리합니다.
+    
+    const genders = ['male', 'female'] as const;
+    const directions: Direction[] = ['down', 'left', 'right', 'up'];
+    const dirRowStart = { down: 0, left: 4, right: 8, up: 12 };
 
-    // 아래 방향
-    this.anims.create({
-      key: 'walk-down',
-      frames: this.anims.generateFrameNumbers('character', { start: 0, end: 2 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'idle-down',
-      frames: [{ key: 'character', frame: 1 }],
-      frameRate: 1,
-    });
-
-    // 왼쪽 방향
-    this.anims.create({
-      key: 'walk-left',
-      frames: this.anims.generateFrameNumbers('character', { start: 3, end: 5 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'idle-left',
-      frames: [{ key: 'character', frame: 4 }],
-      frameRate: 1,
-    });
-
-    // 오른쪽 방향
-    this.anims.create({
-      key: 'walk-right',
-      frames: this.anims.generateFrameNumbers('character', { start: 6, end: 8 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'idle-right',
-      frames: [{ key: 'character', frame: 7 }],
-      frameRate: 1,
-    });
-
-    // 위 방향
-    this.anims.create({
-      key: 'walk-up',
-      frames: this.anims.generateFrameNumbers('character', { start: 9, end: 11 }),
-      frameRate: 8,
-      repeat: -1,
-    });
-
-    this.anims.create({
-      key: 'idle-up',
-      frames: [{ key: 'character', frame: 10 }],
-      frameRate: 1,
+    genders.forEach((gender) => {
+      const bodyKey = `body_${gender}`;
+      
+      directions.forEach((dir) => {
+        const start = dirRowStart[dir];
+        
+        // Walk 애니메이션
+        this.anims.create({
+          key: `walk_${dir}_${gender}`,
+          frames: this.anims.generateFrameNumbers(bodyKey, { 
+            start, 
+            end: start + 3 
+          }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      });
     });
   }
 
@@ -228,11 +209,6 @@ export class MainScene extends Phaser.Scene {
       });
       categoryText.setOrigin(0.5);
     });
-
-    // 플레이어와 부스 충돌 설정
-    this.boothSprites.forEach((boothSprite) => {
-      this.physics.add.collider(this.player, boothSprite);
-    });
   }
 
   update() {
@@ -260,7 +236,16 @@ export class MainScene extends Phaser.Scene {
       velocityY *= factor;
     }
 
-    this.player.setVelocity(velocityX, velocityY);
+    // Container는 물리 바디가 없으므로 수동 이동
+    const delta = this.game.loop.delta / 1000; // 초 단위 변환
+    const pos = this.player.getPosition();
+    const newX = pos.x + velocityX * delta;
+    const newY = pos.y + velocityY * delta;
+    
+    // 월드 경계 체크
+    const clampedX = Phaser.Math.Clamp(newX, 0, 3000);
+    const clampedY = Phaser.Math.Clamp(newY, 0, 2000);
+    this.player.setPosition(clampedX, clampedY);
 
     // 애니메이션 업데이트
     this.updatePlayerAnimation(velocityX, velocityY);
@@ -281,44 +266,38 @@ export class MainScene extends Phaser.Scene {
   private updatePlayerAnimation(velocityX: number, velocityY: number) {
     if (velocityX === 0 && velocityY === 0) {
       // 정지 - 마지막 방향 유지
-      const currentAnim = this.player.anims.currentAnim;
-      if (currentAnim) {
-        const animKey = currentAnim.key;
-        // walk-로 시작하는 경우만 idle로 전환
-        if (animKey.startsWith('walk-')) {
-          const direction = animKey.replace('walk-', '');
-          this.player.play(`idle-${direction}`, true);
-        }
-        // 이미 idle이면 그대로 유지 (아무것도 안 함)
-      } else {
-        this.player.play('idle-down', true);
+      const currentAnimKey = this.player.getCurrentAnimKey();
+      if (currentAnimKey && currentAnimKey.startsWith('walk_')) {
+        const parts = currentAnimKey.split('_');
+        const direction = parts[1] as Direction;
+        this.player.stopWalk(direction);
+      } else if (!currentAnimKey) {
+        // 초기 상태
+        this.player.stopWalk('down');
       }
     } else {
       // 이동 - 방향 우선순위: 상하 > 좌우
+      let direction: Direction;
+      
       if (Math.abs(velocityY) > Math.abs(velocityX)) {
-        if (velocityY < 0) {
-          this.player.play('walk-up', true);
-        } else {
-          this.player.play('walk-down', true);
-        }
+        direction = velocityY < 0 ? 'up' : 'down';
       } else {
-        if (velocityX < 0) {
-          this.player.play('walk-left', true);
-        } else {
-          this.player.play('walk-right', true);
-        }
+        direction = velocityX < 0 ? 'left' : 'right';
       }
+      
+      this.player.playWalk(direction);
     }
   }
 
   private checkNearbyBooths() {
     const interactionDistance = 80;
     let foundBooth: Booth | null = null;
+    const pos = this.player.getPosition();
 
     for (const boothSprite of this.boothSprites) {
       const distance = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
+        pos.x,
+        pos.y,
         boothSprite.x,
         boothSprite.y
       );
@@ -341,4 +320,3 @@ export class MainScene extends Phaser.Scene {
     }
   }
 }
-

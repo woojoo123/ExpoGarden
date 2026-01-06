@@ -34,13 +34,24 @@ export const OAuthCallback: React.FC = () => {
         console.log('OAuthCallback - User info loaded:', response.data);
         useStore.getState().setUser(response.data);
         
-        // 항상 캐릭터 선택 페이지로 이동
-        console.log('OAuthCallback - Redirecting to character selection...');
-        navigate('/character-selection');
+        // returnTo 파라미터에 따라 리다이렉트
+        const returnTo = localStorage.getItem('returnTo') || 'metaverse';
+        localStorage.removeItem('returnTo'); // 사용 후 제거
+        
+        console.log('OAuthCallback - returnTo:', returnTo);
+        
+        if (returnTo === 'main') {
+          // 메인페이지로 복귀
+          navigate('/');
+        } else {
+          // 메타버스 입장 (캐릭터 선택)
+          navigate('/character-selection');
+        }
       }).catch((error) => {
         console.error('OAuthCallback - Failed to get user info:', error);
         alert('사용자 정보를 가져오는데 실패했습니다.');
         apiClient.clearTokens();
+        localStorage.removeItem('returnTo');
         navigate('/');
       });
     } else {
