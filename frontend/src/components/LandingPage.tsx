@@ -9,9 +9,9 @@ export const LandingPage: React.FC = () => {
 
   const handleEnterMetaverse = () => {
     if (!user) {
-      // 로그인 필요 - 메타버스 입장 의도로 로그인
+      // 로그인 필요 - 로그인 페이지로 이동
       localStorage.setItem('returnTo', 'metaverse');
-      window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
+      navigate('/login');
     } else {
       // 이미 로그인됨 → 캐릭터 선택으로
       navigate('/character-selection');
@@ -19,9 +19,9 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleLogin = () => {
-    // 헤더 로그인 - 메인으로 복귀
+    // 헤더 로그인 - 로그인 페이지로 이동
     localStorage.setItem('returnTo', 'main');
-    window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
+    navigate('/login');
   };
 
   const handleLogout = () => {

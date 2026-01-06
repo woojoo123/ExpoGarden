@@ -1,81 +1,52 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/api/client';
+import { useStore } from '@/state/store';
 
-export const SignupPage: React.FC = () => {
+export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const setUser = useStore((state) => state.setUser);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const validateForm = () => {
-    if (!email || !password || !passwordConfirm || !nickname) {
-      setError('모든 필드를 입력해주세요.');
-      return false;
-    }
-
-    if (password.length < 6) {
-      setError('비밀번호는 최소 6자 이상이어야 합니다.');
-      return false;
-    }
-
-    if (password !== passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다.');
-      return false;
-    }
-
-    return true;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!validateForm()) {
-      return;
-    }
-
     setLoading(true);
 
     try {
-      await apiClient.signup(email, password, nickname, 'VISITOR');
-      setSuccess(true);
+      const response = await apiClient.login(email, password);
+      const tokenResponse = response.data;
       
-      // 2초 후 로그인 페이지로 이동
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+      // 토큰 저장
+      apiClient.setTokens(tokenResponse);
+      setUser(tokenResponse.user);
+      
+      // returnTo에 따라 리다이렉트
+      const returnTo = localStorage.getItem('returnTo');
+      localStorage.removeItem('returnTo');
+      
+      if (returnTo === 'metaverse') {
+        navigate('/character-selection');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
-      console.error('Signup error:', err);
-      setError(
-        err.response?.data?.message || 
-        '회원가입에 실패했습니다. 이메일이 이미 사용 중일 수 있습니다.'
-      );
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.successBox}>
-            <div style={styles.successIcon}>✅</div>
-            <h2 style={styles.successTitle}>회원가입 완료!</h2>
-            <p style={styles.successText}>
-              환영합니다! 잠시 후 로그인 페이지로 이동합니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleGoogleLogin = () => {
+    // Google OAuth 로그인 (기존)
+    const returnTo = localStorage.getItem('returnTo') || 'main';
+    window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
+  };
 
   return (
     <div style={styles.container}>
@@ -84,8 +55,8 @@ export const SignupPage: React.FC = () => {
           <h1 style={styles.logo} onClick={() => navigate('/')}>
             🏛️ ExpoGarden
           </h1>
-          <h2 style={styles.title}>회원가입</h2>
-          <p style={styles.subtitle}>메타버스 전시회 플랫폼에 가입하세요</p>
+          <h2 style={styles.title}>로그인</h2>
+          <p style={styles.subtitle}>메타버스 전시회 플랫폼에 오신 것을 환영합니다</p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -109,40 +80,12 @@ export const SignupPage: React.FC = () => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>닉네임</label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="사용할 닉네임"
-              required
-              style={styles.input}
-              disabled={loading}
-              maxLength={20}
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
             <label style={styles.label}>비밀번호</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="최소 6자 이상"
-              required
-              style={styles.input}
-              disabled={loading}
-              minLength={6}
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>비밀번호 확인</label>
-            <input
-              type="password"
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              placeholder="비밀번호 다시 입력"
+              placeholder="••••••••"
               required
               style={styles.input}
               disabled={loading}
@@ -157,19 +100,28 @@ export const SignupPage: React.FC = () => {
               ...(loading ? styles.disabledButton : {}),
             }}
           >
-            {loading ? '가입 중...' : '회원가입'}
+            {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
 
+        <div style={styles.divider}>
+          <span style={styles.dividerText}>또는</span>
+        </div>
+
+        <button onClick={handleGoogleLogin} style={styles.googleButton} disabled={loading}>
+          <span style={styles.googleIcon}>🔵</span>
+          Google로 로그인
+        </button>
+
         <div style={styles.footer}>
           <p style={styles.footerText}>
-            이미 계정이 있으신가요?{' '}
+            계정이 없으신가요?{' '}
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/signup')}
               style={styles.linkButton}
               disabled={loading}
             >
-              로그인
+              회원가입
             </button>
           </p>
           <button
@@ -228,7 +180,7 @@ const styles: Record<string, React.CSSProperties> = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '20px',
   },
   error: {
     backgroundColor: '#fee',
@@ -272,6 +224,40 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#aaa',
     cursor: 'not-allowed',
   },
+  divider: {
+    display: 'flex',
+    alignItems: 'center',
+    margin: '25px 0',
+  },
+  dividerText: {
+    padding: '0 15px',
+    fontSize: '14px',
+    color: '#999',
+    backgroundColor: '#fff',
+    position: 'relative',
+    zIndex: 1,
+    flex: '0 0 auto',
+    margin: '0 auto',
+  },
+  googleButton: {
+    width: '100%',
+    padding: '14px',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#333',
+    backgroundColor: '#fff',
+    border: '2px solid #ddd',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    transition: 'all 0.2s',
+  },
+  googleIcon: {
+    fontSize: '20px',
+  },
   footer: {
     marginTop: '30px',
     textAlign: 'center',
@@ -293,22 +279,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '14px',
     textDecoration: 'underline',
   },
-  successBox: {
-    textAlign: 'center',
-    padding: '40px 20px',
-  },
-  successIcon: {
-    fontSize: '64px',
-    marginBottom: '20px',
-  },
-  successTitle: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: '12px',
-  },
-  successText: {
-    fontSize: '16px',
-    color: '#666',
-  },
 };
+

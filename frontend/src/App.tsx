@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
+import { LoginPage } from './components/LoginPage';
+import { SignupPage } from './components/SignupPage';
 import { ExhibitionViewPhaser } from './components/ExhibitionViewPhaser';
 import { OAuthCallback } from './components/OAuthCallback';
-import { SignupPage } from './components/SignupPage';
 import { MyBoothsPage } from './components/MyBoothsPage';
 import { BoothFormPage } from './components/BoothFormPage';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -39,9 +40,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route path="/metaverse" element={<ExhibitionViewPhaser />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
-        <Route path="/signup" element={<SignupPage />} />
         <Route path="/character-selection" element={<CharacterSelectionPage />} />
         <Route path="/my/booths" element={<MyBoothsPage />} />
         <Route path="/my/booths/new" element={<BoothFormPage />} />

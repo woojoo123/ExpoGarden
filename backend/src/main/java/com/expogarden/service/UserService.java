@@ -30,11 +30,8 @@ public class UserService {
     }
     
     private boolean isValidCharacterId(String characterId) {
-        return characterId != null && 
-               (characterId.equals("character1") || 
-                characterId.equals("character2") || 
-                characterId.equals("character3") || 
-                characterId.equals("character4"));
+        // 파츠 레이어 시스템: JSON 문자열 허용 (최대 500자)
+        return characterId != null && !characterId.isEmpty() && characterId.length() <= 500;
     }
     
     private UserDto mapToDto(User user) {

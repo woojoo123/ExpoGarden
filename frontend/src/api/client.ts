@@ -98,6 +98,16 @@ class ApiClient {
   }
 
   // Auth
+  async signup(email: string, password: string, nickname: string, role: string = 'VISITOR') {
+    const response = await this.client.post<ApiResponse<any>>('/auth/signup', {
+      email,
+      password,
+      nickname,
+      role,
+    });
+    return response.data;
+  }
+
   async login(email: string, password: string) {
     const response = await this.client.post<ApiResponse<TokenResponse>>('/auth/login', {
       email,

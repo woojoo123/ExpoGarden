@@ -66,10 +66,22 @@ export const CharacterSelectionPage: React.FC = () => {
       navigate('/metaverse');
     } catch (error: any) {
       console.error('Failed to select character:', error);
-      const errorMessage = error.response?.data?.error || '캐릭터 선택에 실패했습니다.';
-      alert(errorMessage + ' 다시 로그인해주세요.');
+      
+      // 에러 메시지 추출 (객체일 수 있으므로 안전하게 처리)
+      let errorMessage = '캐릭터 선택에 실패했습니다.';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      }
+      
+      alert(errorMessage + '\n다시 로그인해주세요.');
       apiClient.clearTokens();
-      navigate('/');
+      navigate('/login');
     } finally {
       setLoading(false);
     }
