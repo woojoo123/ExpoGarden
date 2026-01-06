@@ -73,13 +73,22 @@ public class SecurityConfig {
                     "/actuator/**",
                     "/oauth2/**",
                     "/login/oauth2/**",
-                    "/uploads/**"
+                    "/uploads/**",
+                    "/ws/**"
                 ).permitAll()
                 // 나머지는 인증 필요
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
                 .successHandler(oAuth2AuthenticationSuccessHandler)
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    // API 요청은 401 반환 (OAuth 리다이렉트 방지)
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\":{\"message\":\"Unauthorized\"}}");
+                })
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

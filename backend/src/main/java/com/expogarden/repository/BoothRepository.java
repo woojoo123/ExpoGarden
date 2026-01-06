@@ -36,5 +36,8 @@ public interface BoothRepository extends JpaRepository<Booth, Long>, JpaSpecific
     
     @Query("SELECT COUNT(b) FROM Booth b WHERE b.hallId = :hallId AND b.status = 'APPROVED' AND b.deletedAt IS NULL")
     long countByHallIdAndApproved(@Param("hallId") Long hallId);
+    
+    @Query("SELECT COUNT(b) FROM Booth b WHERE b.exhibitionId = :exhibitionId AND b.deletedAt IS NULL")
+    Long countByExhibitionIdAndNotDeleted(@Param("exhibitionId") Long exhibitionId);
 }
 

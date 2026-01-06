@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient } from '@/api/client';
-import { Role } from '@/types';
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,7 +8,7 @@ export const SignupPage: React.FC = () => {
     password: '',
     passwordConfirm: '',
     nickname: '',
-    role: 'EXHIBITOR' as Role,
+    role: 'EXHIBITOR' as 'ADMIN' | 'EXHIBITOR' | 'VISITOR',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,6 +61,7 @@ export const SignupPage: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={styles.container}>

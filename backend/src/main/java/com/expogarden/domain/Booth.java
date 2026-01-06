@@ -38,7 +38,7 @@ public class Booth {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private BoothStatus status = BoothStatus.DRAFT;
+    private BoothStatus status = BoothStatus.DRAFT; // default는 BoothStatus.DRAFT로 되어있음
     
     @Column(nullable = false, length = 255)
     private String title;

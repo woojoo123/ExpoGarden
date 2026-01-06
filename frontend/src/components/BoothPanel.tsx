@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Booth } from '@/types';
+import { ChatPanel } from './ChatPanel';
 
 interface BoothPanelProps {
   booth: Booth;
@@ -7,17 +8,28 @@ interface BoothPanelProps {
 }
 
 export const BoothPanel: React.FC<BoothPanelProps> = ({ booth, onClose }) => {
+  const [showChat, setShowChat] = useState(false);
+
   return (
     <div style={styles.overlay}>
       <div style={styles.panel}>
         <div style={styles.header}>
           <h2>{booth.title}</h2>
-          <button onClick={onClose} style={styles.closeBtn}>
-            ✕
-          </button>
+          <div style={styles.headerButtons}>
+            <button onClick={() => setShowChat(!showChat)} style={styles.chatBtn}>
+              {showChat ? '📄 정보' : '💬 채팅'}
+            </button>
+            <button onClick={onClose} style={styles.closeBtn}>
+              ✕
+            </button>
+          </div>
         </div>
 
         <div style={styles.content}>
+          {showChat ? (
+            <ChatPanel boothId={booth.id} boothTitle={booth.title} />
+          ) : (
+            <>
           {booth.thumbnailUrl && (
             <img src={booth.thumbnailUrl} alt={booth.title} style={styles.thumbnail} />
           )}
@@ -86,6 +98,8 @@ export const BoothPanel: React.FC<BoothPanelProps> = ({ booth, onClose }) => {
               방명록 남기기
             </button>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
@@ -123,6 +137,21 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
+  },
+  headerButtons: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+  },
+  chatBtn: {
+    padding: '8px 16px',
+    backgroundColor: '#17a2b8',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 600,
   },
   closeBtn: {
     background: 'none',

@@ -42,8 +42,8 @@ class ApiClient {
 
           try {
             const response = await this.refreshAccessToken();
-            this.setAccessToken(response.data.accessToken);
-            originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+            this.setAccessToken(response.data.data.accessToken);
+            originalRequest.headers.Authorization = `Bearer ${response.data.data.accessToken}`;
             return this.client(originalRequest);
           } catch (refreshError) {
             this.clearTokens();
@@ -255,6 +255,36 @@ class ApiClient {
         },
       }
     );
+    return response.data;
+  }
+
+  // Statistics
+  async getExhibitionStats(exhibitionId: number) {
+    const response = await this.client.get<ApiResponse<{
+      exhibitionId: number;
+      exhibitionTitle: string;
+      totalViews: number;
+      uniqueVisitors: number;
+      totalBooths: number;
+      topBooths: Array<{
+        boothId: number;
+        boothTitle: string;
+        totalViews: number;
+        uniqueVisitors: number;
+      }>;
+    }>>(`/statistics/exhibitions/${exhibitionId}`);
+    return response.data;
+  }
+
+  async getBoothStats(boothId: number) {
+    const response = await this.client.get<ApiResponse<{
+      boothId: number;
+      boothTitle: string;
+      totalViews: number;
+      uniqueVisitors: number;
+      clickEvents: number;
+      videoPlays: number;
+    }>>(`/statistics/booths/${boothId}`);
     return response.data;
   }
 }

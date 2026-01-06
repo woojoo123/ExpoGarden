@@ -46,9 +46,14 @@ export const AdminPanel: React.FC = () => {
         </p>
         
         {user.role === 'ADMIN' && (
-          <button onClick={() => navigate('/admin/booths')} style={styles.adminBtn}>
-            관리자 대시보드
-          </button>
+          <>
+            <button onClick={() => navigate('/admin/booths')} style={styles.adminBtn}>
+              부스 관리
+            </button>
+            <button onClick={() => navigate('/admin/statistics')} style={styles.statsBtn}>
+              📊 통계 대시보드
+            </button>
+          </>
         )}
         
         {user.role === 'EXHIBITOR' && (
@@ -193,6 +198,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '4px',
     cursor: 'pointer',
     marginTop: '12px',
+  },
+  statsBtn: {
+    width: '100%',
+    padding: '10px',
+    backgroundColor: '#17a2b8',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    marginTop: '8px',
   },
   manageBtn: {
     width: '100%',
