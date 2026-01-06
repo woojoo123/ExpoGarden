@@ -42,6 +42,9 @@ public class User {
     @Column(nullable = false, length = 100)
     private String nickname;
     
+    @Column(name = "selected_character", length = 50)
+    private String selectedCharacter; // "character1", "character2", "character3", "character4"
+    
     // CreatedDate : 생성 시간 자동 기록
     // updatable : 수정 가능 여부
     // Instant 타입은 java.time.Instant 클래스로, 타임스탬프(즉, 특정 시점의 날짜와 시간)를 UTC 기준으로 나타내는 타입입니다.

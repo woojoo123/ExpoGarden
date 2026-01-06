@@ -65,6 +65,7 @@ public class AuthService {
                 .email(userPrincipal.getEmail())
                 .nickname(userPrincipal.getNickname())
                 .role(userPrincipal.getRole())
+                .selectedCharacter(userPrincipal.getSelectedCharacter())
                 .build())
             .build();
     }
@@ -90,7 +91,8 @@ public class AuthService {
             user.getEmail(),
             user.getPasswordHash(),
             user.getRole(),
-            user.getNickname()
+            user.getNickname(),
+            user.getSelectedCharacter()
         );
         
         String newAccessToken = tokenProvider.generateAccessToken(userPrincipal);
@@ -108,6 +110,7 @@ public class AuthService {
             .email(user.getEmail())
             .nickname(user.getNickname())
             .role(user.getRole())
+            .selectedCharacter(user.getSelectedCharacter())
             .createdAt(user.getCreatedAt())
             .build();
     }

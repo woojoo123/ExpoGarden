@@ -21,6 +21,7 @@ public class UserPrincipal implements UserDetails {
     private String password;
     private Role role;
     private String nickname;
+    private String selectedCharacter;
     
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

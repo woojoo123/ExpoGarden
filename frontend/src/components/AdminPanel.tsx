@@ -36,36 +36,38 @@ export const AdminPanel: React.FC = () => {
 
   if (user) {
     return (
-      <div style={styles.panel}>
-        <h2>사용자 패널</h2>
-        <p>
-          <strong>사용자:</strong> {user.nickname} ({user.role})
-        </p>
-        <p>
-          <strong>이메일:</strong> {user.email}
-        </p>
-        
-        {user.role === 'ADMIN' && (
-          <>
-            <button onClick={() => navigate('/admin/booths')} style={styles.adminBtn}>
-              부스 관리
+      <>
+        <div style={styles.panel}>
+          <h2>사용자 패널</h2>
+          <p>
+            <strong>사용자:</strong> {user.nickname} ({user.role})
+          </p>
+          <p>
+            <strong>이메일:</strong> {user.email}
+          </p>
+          
+          {user.role === 'ADMIN' && (
+            <>
+              <button onClick={() => navigate('/admin/booths')} style={styles.adminBtn}>
+                부스 관리
+              </button>
+              <button onClick={() => navigate('/admin/statistics')} style={styles.statsBtn}>
+                📊 통계 대시보드
+              </button>
+            </>
+          )}
+          
+          {user.role === 'EXHIBITOR' && (
+            <button onClick={() => navigate('/my/booths')} style={styles.manageBtn}>
+              내 부스 관리
             </button>
-            <button onClick={() => navigate('/admin/statistics')} style={styles.statsBtn}>
-              📊 통계 대시보드
-            </button>
-          </>
-        )}
-        
-        {user.role === 'EXHIBITOR' && (
-          <button onClick={() => navigate('/my/booths')} style={styles.manageBtn}>
-            내 부스 관리
+          )}
+          
+          <button onClick={handleLogout} style={styles.logoutBtn}>
+            로그아웃
           </button>
-        )}
-        
-        <button onClick={handleLogout} style={styles.logoutBtn}>
-          로그아웃
-        </button>
-      </div>
+        </div>
+      </>
     );
   }
 

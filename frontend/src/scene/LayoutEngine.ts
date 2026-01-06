@@ -103,6 +103,7 @@ export class LayoutEngine {
       this.scene
     );
     box.position = position;
+    box.checkCollisions = true;
 
     // 머티리얼 - 카테고리별 색상
     const material = new StandardMaterial(`mat_${booth.id}`, this.scene);
@@ -158,6 +159,10 @@ export class LayoutEngine {
       camera.target = mesh.position;
       camera.radius = 15;
     }
+  }
+
+  getBoothMeshes(): Map<number, Mesh> {
+    return this.boothMeshes;
   }
 }
 

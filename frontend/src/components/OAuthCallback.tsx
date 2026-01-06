@@ -27,12 +27,20 @@ export const OAuthCallback: React.FC = () => {
         },
       });
 
+      console.log('Tokens set, fetching user info...');
+
       // 사용자 정보 조회
       apiClient.getMe().then((response) => {
+        console.log('OAuthCallback - User info loaded:', response.data);
         useStore.getState().setUser(response.data);
-        navigate('/');
+        
+        // 항상 캐릭터 선택 페이지로 이동
+        console.log('OAuthCallback - Redirecting to character selection...');
+        navigate('/character-selection');
       }).catch((error) => {
-        console.error('Failed to get user info:', error);
+        console.error('OAuthCallback - Failed to get user info:', error);
+        alert('사용자 정보를 가져오는데 실패했습니다.');
+        apiClient.clearTokens();
         navigate('/');
       });
     } else {

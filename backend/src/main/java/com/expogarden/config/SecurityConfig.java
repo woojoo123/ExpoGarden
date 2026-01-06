@@ -67,6 +67,7 @@ public class SecurityConfig {
                     "/auth/login",
                     "/auth/signup",
                     "/auth/refresh",
+                    "/auth/me",
                     "/exhibitions/**",
                     "/booths/**",
                     "/track",
@@ -74,7 +75,8 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/uploads/**",
-                    "/ws/**"
+                    "/ws/**",
+                    "/statistics/**"
                 ).permitAll()
                 // 나머지는 인증 필요
                 .anyRequest().authenticated()

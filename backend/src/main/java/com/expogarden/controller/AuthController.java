@@ -59,6 +59,7 @@ public class AuthController {
             .email(userPrincipal.getEmail())
             .nickname(userPrincipal.getNickname())
             .role(userPrincipal.getRole())
+            .selectedCharacter(userPrincipal.getSelectedCharacter())
             .build();
         
         return ResponseEntity.ok(Map.of("data", user));

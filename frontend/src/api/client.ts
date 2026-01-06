@@ -287,6 +287,15 @@ class ApiClient {
     }>>(`/statistics/booths/${boothId}`);
     return response.data;
   }
+
+  // User Character Selection
+  async selectCharacter(characterId: string) {
+    const response = await this.client.post<ApiResponse<User>>(
+      '/users/character',
+      { characterId }
+    );
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

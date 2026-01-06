@@ -3,7 +3,15 @@ export interface User {
   email: string;
   nickname: string;
   role: 'ADMIN' | 'EXHIBITOR' | 'VISITOR';
+  selectedCharacter?: string | null;
   createdAt: string;
+}
+
+export interface Character {
+  id: string;
+  name: string;
+  file: string;
+  description?: string;
 }
 
 export interface TokenResponse {

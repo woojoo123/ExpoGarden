@@ -126,7 +126,13 @@ export const ExhibitionView: React.FC = () => {
 
       {/* 안내 */}
       <div style={styles.instructions}>
-        마우스로 화면을 드래그하여 시점을 회전하고, 스크롤로 줌 인/아웃할 수 있습니다. 부스를 클릭하면 상세 정보를 볼 수 있습니다.
+        <strong>💡 조작법:</strong> 우측 하단 버튼으로 관람/이동 모드 전환 | 
+        <span style={{ marginLeft: '8px' }}>
+          <strong>관람 모드:</strong> 마우스 드래그로 회전, 스크롤로 줌 | 
+        </span>
+        <span style={{ marginLeft: '8px' }}>
+          <strong>이동 모드:</strong> WASD로 이동, E키로 부스 상호작용
+        </span>
       </div>
     </div>
   );

@@ -59,7 +59,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             user.getEmail(),
             null, // OAuth는 비밀번호 없음
             user.getRole(),
-            user.getNickname()
+            user.getNickname(),
+            user.getSelectedCharacter()
         );
         
         // JWT 토큰 발급
