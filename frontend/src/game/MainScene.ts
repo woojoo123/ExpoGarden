@@ -2,7 +2,31 @@ import Phaser from 'phaser';
 import type { Booth } from '@/types';
 import type { Direction } from '@/constants/characters';
 
+// 슬롯 타입 정의 (배경 이미지 원본 픽셀 좌표)
+type ExpoSlot = {
+  id: number;
+  boothId?: number; // 선택적: 지정하지 않으면 순서대로 매핑
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+// 월드 좌표로 변환된 슬롯
+type WorldSlot = ExpoSlot & {
+  worldX: number;
+  worldY: number;
+  worldWidth: number;
+  worldHeight: number;
+};
+
+// Phaser → React 이벤트 타입
+export type BoothZoneInteractEvent = {
+  boothId: number;
+};
+
 export class MainScene extends Phaser.Scene {
+  private background!: Phaser.GameObjects.Image;
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
@@ -19,6 +43,14 @@ export class MainScene extends Phaser.Scene {
   private playerNameText!: Phaser.GameObjects.Text;
   private selectedCharIndex: number = 0; // 선택된 캐릭터 인덱스 (0-9)
   private userNickname: string = ''; // 사용자 닉네임
+  
+  // 슬롯 시스템 관련 필드
+  private slots: ExpoSlot[] = [];
+  private worldSlots: WorldSlot[] = [];
+  private activeSlot: WorldSlot | null = null;
+  private bgScale: number = 1;
+  private debugZoneGraphics: Phaser.GameObjects.Graphics[] = [];
+  private debugZonesVisible: boolean = false;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -59,6 +91,14 @@ export class MainScene extends Phaser.Scene {
   preload() {
     console.log('[MainScene] preload() 호출됨, 캐릭터: Character64x64');
     
+    // 전시 홀 배경 이미지 로드
+    // Vite의 public 디렉터리는 루트 기준 / 로 접근 가능
+    // 실제 파일 위치: frontend/public/assets/backgrounds/expo_bg.png
+    this.load.image('expoBg', '/assets/backgrounds/expo_bg.png');
+
+    // 슬롯 JSON 로드
+    this.load.json('expoSlots', '/assets/backgrounds/expo_slots.json');
+
     // 완성된 캐릭터 스프라이트 시트 로드 (항상 Character64x64 사용)
     // Character64x64.png: 512x960 (64x64 프레임, 가로 8칸, 세로 15칸)
     this.load.spritesheet(
@@ -71,14 +111,22 @@ export class MainScene extends Phaser.Scene {
   create() {
     console.log('[MainScene] create() 호출됨, 쇼룸 개수:', this.booths.length);
     
-    // 배경을 타일맵으로 교체 (타일 스프라이트로 반복 배경 생성)
-    const tileSize = 64;
-    const tileColor = 0xe8dcc0; // 밝은 베이지/갈색
-    for (let y = 0; y < 2000; y += tileSize) {
-      for (let x = 0; x < 3000; x += tileSize) {
-        this.add.rectangle(x + tileSize/2, y + tileSize/2, tileSize, tileSize, tileColor).setOrigin(0.5);
-      }
-    }
+    // 정적인 전시 홀 배경 이미지 추가
+    this.background = this.add.image(0, 0, 'expoBg');
+    this.background.setOrigin(0, 0); // 좌상단이 (0,0)
+    this.background.setDepth(-1000); // 모든 오브젝트 뒤에 렌더링
+
+    // 배경 크기에 맞춰 카메라/월드 설정 및 스케일 조정
+    // 이미지가 완전히 로드될 때까지 약간의 지연을 두고 호출
+    this.time.delayedCall(10, () => {
+      this.resizeBackgroundToView();
+    });
+
+    // 슬롯 데이터 로드 및 월드 좌표 변환
+    this.loadSlots();
+
+    // 리사이즈 이벤트에 대응하여 배경과 카메라 갱신
+    this.scale.on('resize', this.handleResize, this);
 
     // 애니메이션 생성
     this.createAnimations();
@@ -113,7 +161,12 @@ export class MainScene extends Phaser.Scene {
       });
     }
     
-    this.player = this.physics.add.sprite(1500, 1000, 'Character64x64', startFrame);
+    // 플레이어 생성 위치를 배경 중앙 근처로 설정
+    const worldBounds = this.physics.world.bounds;
+    const playerStartX = worldBounds.centerX || 1500;
+    const playerStartY = worldBounds.centerY || 1000;
+
+    this.player = this.physics.add.sprite(playerStartX, playerStartY, 'Character64x64', startFrame);
     this.player.setDepth(10);
     
     // 스프라이트가 정확히 한 프레임만 보이도록 설정
@@ -124,6 +177,9 @@ export class MainScene extends Phaser.Scene {
     
     // 스케일을 0.5로 설정 (64x64 캐릭터 기준)
     this.player.setScale(0.5);
+
+    // 월드 바운드 밖으로 나가지 않도록 설정 (별도 수동 클램프 대신 사용)
+    this.player.setCollideWorldBounds(true);
     
     // 플레이어 닉네임 텍스트 생성 (플레이어 머리 위에 표시)
     if (this.userNickname) {
@@ -148,11 +204,9 @@ export class MainScene extends Phaser.Scene {
       nickname: this.userNickname,
     });
 
-    // 쇼룸 생성
-    this.createBooths();
-    
-    // 플레이어와 쇼룸 간 충돌 설정
-    this.physics.add.collider(this.player, this.boothSprites);
+    // 슬롯이 있으면 슬롯 위치에 부스 생성, 없으면 기본 그리드 배치
+    // loadSlots()에서 슬롯 로드 후 convertSlotsToWorld()가 호출됨
+    // 슬롯이 없으면 createBooths()를 fallback으로 사용
 
     // 키보드 입력 설정
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -163,11 +217,31 @@ export class MainScene extends Phaser.Scene {
       D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
     };
 
-    // E키로 상호작용
+    // E키로 상호작용 (슬롯 우선, 기존 부스는 fallback)
     this.input.keyboard!.on('keydown-E', () => {
+      // 1순위: 슬롯 존 위에 있을 때
+      if (this.activeSlot) {
+        const booth = this.booths.find(b => b.id === this.activeSlot!.boothId);
+        if (booth && this.onBoothInteract) {
+          this.onBoothInteract(booth);
+          // Phaser → React 이벤트 emit
+          this.events.emit('boothZoneInteract', { boothId: this.activeSlot.boothId } as BoothZoneInteractEvent);
+          return;
+        }
+      }
+
+      // 2순위: 기존 nearbyBooth 로직 (fallback)
       if (this.nearbyBooth && this.onBoothInteract) {
         this.onBoothInteract(this.nearbyBooth);
       }
+    });
+
+    // D키로 디버그 존 렌더링 토글
+    const debugKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    debugKey.on('down', () => {
+      this.debugZonesVisible = !this.debugZonesVisible;
+      this.debugZoneGraphics.forEach(g => g.setVisible(this.debugZonesVisible));
+      console.log('[MainScene] 디버그 존 렌더링:', this.debugZonesVisible ? 'ON' : 'OFF');
     });
 
     // 카메라 설정
@@ -365,15 +439,8 @@ export class MainScene extends Phaser.Scene {
       velocityY *= factor;
     }
 
-    // 물리 바디로 이동
+    // 물리 바디로 이동 (Arcade Physics가 자동으로 처리)
     this.player.setVelocity(velocityX, velocityY);
-    
-    // 월드 경계 체크
-    const clampedX = Phaser.Math.Clamp(this.player.x, 0, 3000);
-    const clampedY = Phaser.Math.Clamp(this.player.y, 0, 2000);
-    if (clampedX !== this.player.x || clampedY !== this.player.y) {
-      this.player.setPosition(clampedX, clampedY);
-    }
 
     // 애니메이션 업데이트
     this.updatePlayerAnimation(velocityX, velocityY);
@@ -383,7 +450,10 @@ export class MainScene extends Phaser.Scene {
       this.playerNameText.setPosition(this.player.x, this.player.y - this.player.displayHeight / 2 - 5);
     }
 
-    // 근처 쇼룸 체크
+    // 슬롯 존 오버랩 체크
+    this.updateActiveSlot();
+
+    // 근처 쇼룸 체크 (fallback)
     this.checkNearbyBooths();
 
     // 상호작용 텍스트 위치를 화면 중앙 상단으로 고정 (카메라 이동과 무관)
@@ -394,6 +464,80 @@ export class MainScene extends Phaser.Scene {
       const screenY = camera.scrollY + 100;
       this.interactionText.setPosition(screenX, screenY);
     }
+
+    // 씬이 종료될 때 리사이즈 이벤트 정리
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.handleResize, this);
+    });
+  }
+
+  /**
+   * 배경 이미지를 현재 뷰 크기에 맞게 스케일링하고,
+   * 카메라/물리 월드 경계를 배경 크기에 맞게 설정한다.
+   * 배경이 화면을 완전히 채우도록 cover 방식으로 스케일링.
+   */
+  private resizeBackgroundToView() {
+    if (!this.background) return;
+
+    const texture = this.textures.get('expoBg');
+    if (!texture || !texture.source || !texture.source[0]) {
+      console.warn('[MainScene] 배경 이미지 텍스처가 아직 로드되지 않음');
+      return;
+    }
+    
+    const source = texture.getSourceImage() as HTMLImageElement;
+    if (!source || !source.complete) {
+      console.warn('[MainScene] 배경 이미지가 아직 완전히 로드되지 않음');
+      return;
+    }
+    
+    const naturalWidth = source.width;
+    const naturalHeight = source.height;
+
+    // this.scale 대신 this.game.scale을 사용하여 정확한 크기 가져오기
+    const viewWidth = this.game.scale.width;
+    const viewHeight = this.game.scale.height;
+
+    // cover 방식: 화면을 완전히 채우도록 더 큰 스케일 사용
+    const scaleX = viewWidth / naturalWidth;
+    const scaleY = viewHeight / naturalHeight;
+    const scale = Math.max(scaleX, scaleY);
+
+    this.background.setScale(scale);
+    this.bgScale = scale; // 스케일 저장
+
+    // 배경이 화면 중앙에 오도록 위치 조정
+    const scaledWidth = naturalWidth * scale;
+    const scaledHeight = naturalHeight * scale;
+    
+    // 배경을 화면 중앙에 배치 (화면보다 크면 잘리도록)
+    this.background.setPosition(0, 0);
+    this.background.setOrigin(0, 0);
+
+    // 월드 크기는 배경의 실제 스케일된 크기로 설정
+    const worldWidth = scaledWidth;
+    const worldHeight = scaledHeight;
+
+    // 카메라 및 물리 월드 바운드 설정
+    this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+    this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+
+    // 슬롯이 이미 로드되었다면 월드 좌표 재계산
+    if (this.slots.length > 0) {
+      this.convertSlotsToWorld();
+      this.createBoothZoneDebugGraphics();
+    }
+  }
+
+  /**
+   * Phaser Scale Manager의 resize 이벤트 핸들러
+   */
+  private handleResize(gameSize: Phaser.Structs.Size) {
+    const width = gameSize.width;
+    const height = gameSize.height;
+
+    this.cameras.resize(width, height);
+    this.resizeBackgroundToView();
   }
 
   private updatePlayerAnimation(velocityX: number, velocityY: number) {
@@ -417,7 +561,224 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * 슬롯 JSON 데이터를 로드하고 월드 좌표로 변환
+   */
+  private loadSlots() {
+    try {
+      const slotsData = this.cache.json.get('expoSlots') as { slots: ExpoSlot[] };
+      this.slots = slotsData.slots || [];
+      console.log('[MainScene] 슬롯 로드 완료:', this.slots.length, '개');
+      
+      if (this.slots.length > 0) {
+        // 슬롯이 있으면 슬롯 위치에 부스 생성
+        this.convertSlotsToWorld();
+        this.createBoothZoneDebugGraphics();
+      } else {
+        // 슬롯이 없으면 기본 그리드 배치
+        console.log('[MainScene] 슬롯이 없어 기본 그리드 배치 사용');
+        this.createBooths();
+        if (this.player && this.boothSprites.length > 0) {
+          this.physics.add.collider(this.player, this.boothSprites);
+        }
+      }
+    } catch (error) {
+      console.error('[MainScene] 슬롯 로드 실패, 기본 그리드 배치 사용:', error);
+      this.slots = [];
+      // 슬롯 로드 실패 시 기본 배치
+      this.createBooths();
+      if (this.player && this.boothSprites.length > 0) {
+        this.physics.add.collider(this.player, this.boothSprites);
+      }
+    }
+  }
+
+  /**
+   * 슬롯을 배경 스케일에 맞춰 월드 좌표로 변환
+   */
+  private convertSlotsToWorld() {
+    this.worldSlots = this.slots.map(slot => ({
+      ...slot,
+      worldX: slot.x * this.bgScale,
+      worldY: slot.y * this.bgScale,
+      worldWidth: slot.width * this.bgScale,
+      worldHeight: slot.height * this.bgScale,
+    }));
+    
+    // 슬롯 위치에 실제 부스 생성
+    this.createBoothsAtSlots();
+  }
+  
+  /**
+   * 슬롯 위치에 실제 부스 스프라이트 생성
+   */
+  private createBoothsAtSlots() {
+    // 기존 부스 스프라이트 제거
+    this.boothSprites.forEach(sprite => sprite.destroy());
+    this.boothSprites = [];
+    
+    // 쇼룸별 색상 매핑
+    const categoryColors: Record<string, number> = {
+      '아트/디자인': 0xef4444,
+      '사진/영상': 0x8b5cf6,
+      '일러스트': 0xec4899,
+      '게임': 0x10b981,
+      '음악': 0xf59e0b,
+      '3D': 0x06b6d4,
+      '프로그래밍': 0x6366f1,
+      'AI': 0x3b82f6,
+      '기타': 0x6b7280,
+    };
+    
+    // 슬롯과 부스를 매핑 (boothId가 있으면 해당 부스, 없으면 순서대로)
+    this.worldSlots.forEach((slot, index) => {
+      let booth: Booth | undefined;
+      
+      if (slot.boothId) {
+        // boothId가 지정되어 있으면 해당 부스 찾기
+        booth = this.booths.find(b => b.id === slot.boothId);
+      } else {
+        // boothId가 없으면 순서대로 매핑
+        booth = this.booths[index];
+      }
+      
+      if (!booth) {
+        console.warn(`[MainScene] 슬롯 ${slot.id}에 해당하는 부스 없음: index=${index}, boothId=${slot.boothId}`);
+        return;
+      }
+      
+      // 부스 중앙 좌표
+      const x = slot.worldX + slot.worldWidth / 2;
+      const y = slot.worldY + slot.worldHeight / 2;
+      
+      const color = categoryColors[booth.category] || 0x6b7280;
+      
+      // 부스 그래픽 생성
+      const graphics = this.add.graphics();
+      graphics.fillStyle(color, 1);
+      graphics.fillRoundedRect(-slot.worldWidth / 2, -slot.worldHeight / 2, slot.worldWidth, slot.worldHeight, 15);
+      graphics.lineStyle(6, 0xffffff, 0.9);
+      graphics.strokeRoundedRect(-slot.worldWidth / 2, -slot.worldHeight / 2, slot.worldWidth, slot.worldHeight, 15);
+      
+      graphics.generateTexture(`booth_${booth.id}`, slot.worldWidth, slot.worldHeight);
+      graphics.destroy();
+      
+      // 부스 스프라이트 생성
+      const boothSprite = this.physics.add.sprite(x, y, `booth_${booth.id}`);
+      boothSprite.setImmovable(true);
+      boothSprite.setData('booth', booth);
+      boothSprite.setDepth(5);
+      this.boothSprites.push(boothSprite);
+      
+      // 부스 이름 텍스트
+      const nameText = this.add.text(x, y - slot.worldHeight / 2 - 20, booth.title, {
+        fontSize: '18px',
+        color: '#ffffff',
+        backgroundColor: '#000000',
+        padding: { x: 10, y: 5 },
+        stroke: '#000000',
+        strokeThickness: 3,
+      });
+      nameText.setOrigin(0.5);
+      nameText.setDepth(6);
+      
+      // 카테고리 뱃지
+      const categoryText = this.add.text(x, y + slot.worldHeight / 2 + 15, booth.category, {
+        fontSize: '14px',
+        color: '#ffffff',
+        backgroundColor: `#${color.toString(16)}`,
+        padding: { x: 6, y: 3 },
+        stroke: '#000000',
+        strokeThickness: 2,
+      });
+      categoryText.setOrigin(0.5);
+      categoryText.setDepth(6);
+    });
+    
+    // 플레이어와 부스 간 충돌 설정
+    if (this.player) {
+      this.physics.add.collider(this.player, this.boothSprites);
+    }
+    
+    console.log(`[MainScene] 슬롯 위치에 부스 ${this.boothSprites.length}개 생성 완료`);
+  }
+
+  /**
+   * 슬롯 존 디버그 렌더링 (D키로 토글)
+   */
+  private createBoothZoneDebugGraphics() {
+    // 기존 그래픽 제거
+    this.debugZoneGraphics.forEach(g => g.destroy());
+    this.debugZoneGraphics = [];
+
+    this.worldSlots.forEach(slot => {
+      const g = this.add.graphics();
+      g.lineStyle(3, 0x00ff00, 0.8);
+      g.strokeRect(slot.worldX, slot.worldY, slot.worldWidth, slot.worldHeight);
+      
+      // 슬롯 ID 텍스트
+      const text = this.add.text(
+        slot.worldX + slot.worldWidth / 2,
+        slot.worldY + slot.worldHeight / 2,
+        `Slot ${slot.id}\nBooth ${slot.boothId}`,
+        {
+          fontSize: '12px',
+          color: '#00ff00',
+          align: 'center',
+          backgroundColor: '#000000',
+          padding: { x: 4, y: 2 },
+        }
+      );
+      text.setOrigin(0.5);
+      text.setDepth(998);
+      text.setVisible(this.debugZonesVisible);
+      
+      g.setDepth(997);
+      g.setVisible(this.debugZonesVisible);
+      this.debugZoneGraphics.push(g);
+    });
+  }
+
+  /**
+   * 플레이어가 현재 어느 슬롯 존 위에 있는지 체크
+   */
+  private updateActiveSlot() {
+    this.activeSlot = null;
+
+    const px = this.player.x;
+    const py = this.player.y;
+
+    for (const slot of this.worldSlots) {
+      if (
+        px >= slot.worldX &&
+        px <= slot.worldX + slot.worldWidth &&
+        py >= slot.worldY &&
+        py <= slot.worldY + slot.worldHeight
+      ) {
+        this.activeSlot = slot;
+        break;
+      }
+    }
+
+    // 상호작용 텍스트 업데이트
+    if (this.activeSlot) {
+      const booth = this.booths.find(b => b.id === this.activeSlot!.boothId);
+      if (booth) {
+        this.interactionText.setText(`[E] ${booth.title} 쇼룸 보기`);
+        this.interactionText.setVisible(true);
+      }
+    } else if (!this.nearbyBooth) {
+      // 슬롯에도 없고 기존 부스에도 없으면 숨김
+      this.interactionText.setVisible(false);
+    }
+  }
+
   private checkNearbyBooths() {
+    // 슬롯이 활성화되어 있으면 기존 부스 체크는 건너뛰기
+    if (this.activeSlot) {
+      return;
+    }
+
     const interactionDistance = 150; // 80에서 150으로 증가 (더 넓은 범위)
     let foundBooth: Booth | null = null;
     const pos = { x: this.player.x, y: this.player.y };
@@ -439,10 +800,10 @@ export class MainScene extends Phaser.Scene {
     if (foundBooth !== this.nearbyBooth) {
       this.nearbyBooth = foundBooth;
       
-      if (foundBooth) {
+      if (foundBooth && !this.activeSlot) {
         this.interactionText.setText(`[E] ${foundBooth.title} 쇼룸 보기`);
         this.interactionText.setVisible(true);
-      } else {
+      } else if (!this.activeSlot) {
         this.interactionText.setVisible(false);
       }
     }
