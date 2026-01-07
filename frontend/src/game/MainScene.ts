@@ -131,6 +131,9 @@ export class MainScene extends Phaser.Scene {
 
     // 쇼룸 생성
     this.createBooths();
+    
+    // 플레이어와 쇼룸 간 충돌 설정
+    this.physics.add.collider(this.player, this.boothSprites);
 
     // 키보드 입력 설정
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -168,14 +171,15 @@ export class MainScene extends Phaser.Scene {
       this.cameras.main.setZoom(newZoom);
     });
 
-    // 상호작용 텍스트
-    this.interactionText = this.add.text(0, 0, '', {
-      fontSize: '16px',
+    // 상호작용 텍스트 (화면 중앙 상단에 고정)
+    this.interactionText = this.add.text(this.cameras.main.width / 2, 100, '', {
+      fontSize: '18px',
       color: '#ffffff',
       backgroundColor: '#000000',
-      padding: { x: 10, y: 5 },
+      padding: { x: 12, y: 6 },
     });
-    this.interactionText.setScrollFactor(0);
+    this.interactionText.setScrollFactor(0); // 카메라에 고정
+    this.interactionText.setOrigin(0.5); // 중앙 정렬
     this.interactionText.setDepth(100);
     this.interactionText.setVisible(false);
 
@@ -358,13 +362,13 @@ export class MainScene extends Phaser.Scene {
     // 근처 쇼룸 체크
     this.checkNearbyBooths();
 
-    // 상호작용 텍스트 위치 업데이트
-    if (this.nearbyBooth) {
+    // 상호작용 텍스트 위치를 화면 중앙 상단으로 고정 (카메라 이동과 무관)
+    if (this.interactionText.visible) {
       const camera = this.cameras.main;
-      this.interactionText.setPosition(
-        camera.width / 2 - this.interactionText.width / 2,
-        camera.height - 80
-      );
+      // 카메라 스크롤 위치를 고려하여 화면 중앙 상단에 고정
+      const screenX = camera.scrollX + camera.width / 2;
+      const screenY = camera.scrollY + 100;
+      this.interactionText.setPosition(screenX, screenY);
     }
   }
 
@@ -390,7 +394,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   private checkNearbyBooths() {
-    const interactionDistance = 80;
+    const interactionDistance = 150; // 80에서 150으로 증가 (더 넓은 범위)
     let foundBooth: Booth | null = null;
     const pos = { x: this.player.x, y: this.player.y };
 
