@@ -6,7 +6,7 @@ import { MainScene } from '@/game/MainScene';
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
 import { BoothPanel } from '@/components/BoothPanel';
-import type { Exhibition, Hall, Booth } from '@/types';
+import type { Booth } from '@/types';
 
 export const ExhibitionViewPhaser: React.FC = () => {
   const navigate = useNavigate();
@@ -14,58 +14,45 @@ export const ExhibitionViewPhaser: React.FC = () => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
-  const [halls, setHalls] = useState<Hall[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentExhibition, setCurrentExhibition] = useState<Exhibition | null>(null);
-  const [currentHall, setCurrentHall] = useState<Hall | null>(null);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
 
-  // 전시 목록 로드
-  useEffect(() => {
-    apiClient.getExhibitions('PUBLISHED').then((response) => {
-      setExhibitions(response.data.content);
-      if (response.data.content.length > 0) {
-        const firstExhibition = response.data.content[0];
-        setCurrentExhibition(firstExhibition);
-        loadHalls(firstExhibition.id);
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  // 홀 목록 로드
-  const loadHalls = async (exhibitionId: number) => {
-    const response = await apiClient.getHalls(exhibitionId);
-    setHalls(response.data);
-    if (response.data.length > 0) {
-      const firstHall = response.data[0];
-      setCurrentHall(firstHall);
-      loadBooths(exhibitionId, firstHall.id);
-    }
-  };
+  // 고정된 전시/홀 ID (단일 전시 운영)
+  const FIXED_EXHIBITION_ID = 1;
+  const FIXED_HALL_ID = 1;
 
   // 쇼룸 목록 로드
-  const loadBooths = async (exhibitionId: number, hallId: number) => {
-    const response = await apiClient.getBooths({
-      exhibitionId,
-      hallId,
-      status: 'APPROVED',
-    });
-    console.log('[ExhibitionViewPhaser] 쇼룸 로드 완료:', {
-      count: response.data.content.length,
-      booths: response.data.content.map(b => ({ id: b.id, title: b.title, status: b.status })),
-    });
-    setBooths(response.data.content);
+  useEffect(() => {
+    loadBooths();
+  }, []);
 
-    // 트래킹: 홀 진입
-    apiClient.trackEvent({
-      exhibitionId,
-      sessionId,
-      action: 'ENTER_HALL',
-      metadata: { hallId },
-    });
+  const loadBooths = async () => {
+    try {
+      const response = await apiClient.getBooths({
+        exhibitionId: FIXED_EXHIBITION_ID,
+        hallId: FIXED_HALL_ID,
+        status: 'APPROVED',
+      });
+      console.log('[ExhibitionViewPhaser] 쇼룸 로드 완료:', {
+        count: response.data.content.length,
+        booths: response.data.content.map(b => ({ id: b.id, title: b.title, status: b.status, hallId: b.hallId, exhibitionId: b.exhibitionId })),
+        response: response.data,
+      });
+      setBooths(response.data.content);
+
+      // 트래킹: 홀 진입
+      apiClient.trackEvent({
+        exhibitionId: FIXED_EXHIBITION_ID,
+        sessionId,
+        action: 'ENTER_HALL',
+        metadata: { hallId: FIXED_HALL_ID },
+      });
+    } catch (error) {
+      console.error('[ExhibitionViewPhaser] 쇼룸 로드 실패:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBoothClick = async (booth: Booth) => {
@@ -76,73 +63,47 @@ export const ExhibitionViewPhaser: React.FC = () => {
       setSelectedBooth(fullBooth);
 
       // 트래킹: 부스 조회
-      if (currentExhibition) {
-        apiClient.trackEvent({
-          exhibitionId: currentExhibition.id,
-          boothId: booth.id,
-          sessionId,
-          action: 'VIEW',
-        });
-      }
+      apiClient.trackEvent({
+        exhibitionId: FIXED_EXHIBITION_ID,
+        boothId: booth.id,
+        sessionId,
+        action: 'VIEW',
+      });
     } catch (error) {
-      console.error('부스 데이터 로드 실패:', error);
+      console.error('[ExhibitionViewPhaser] 부스 데이터 로드 실패:', error);
       // 실패해도 기본 부스 데이터로 표시
       setSelectedBooth(booth);
     }
   };
 
-  const handleHallChange = (hallId: number) => {
-    const hall = halls.find((h) => h.id === hallId);
-    if (hall && currentExhibition) {
-      setCurrentHall(hall);
-      
-      // 게임 재시작
-      if (gameRef.current) {
-        gameRef.current.destroy(true);
-        gameRef.current = null;
-      }
-
-      // 부스 로드 (로드 후 useEffect에서 게임이 자동으로 재시작됨)
-      loadBooths(currentExhibition.id, hallId);
-    }
-  };
-
-  // Phaser 게임 초기화
+  // Phaser 게임 초기화 및 씬 갱신
   useEffect(() => {
-    if (!containerRef.current || booths.length === 0) {
-      console.log('[ExhibitionViewPhaser] 게임 초기화 조건 불만족:', {
-        hasContainer: !!containerRef.current,
-        boothsCount: booths.length,
-      });
+    if (!containerRef.current) {
+      console.log('[ExhibitionViewPhaser] 컨테이너가 준비되지 않음');
+      return;
+    }
+
+    if (loading) {
+      console.log('[ExhibitionViewPhaser] 쇼룸 로딩 중...');
       return;
     }
     
-    // 게임이 이미 있으면 씬 상태 확인
+    // 게임이 이미 있으면 씬만 재시작 (booths가 업데이트될 때마다)
     if (gameRef.current) {
       const scene = gameRef.current.scene.getScene('MainScene');
-      // 씬이 실행 중이면 재시작 (홀 변경 등)
-      if (scene && scene.scene.isActive()) {
-        console.log('[ExhibitionViewPhaser] 씬이 이미 실행 중입니다. 재시작...');
+      if (scene) {
+        console.log('[ExhibitionViewPhaser] 씬 재시작, 쇼룸 개수:', booths.length);
         scene.scene.restart({
           booths: booths,
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
           userId: user?.id,
-          hallId: currentHall?.id,
+          hallId: FIXED_HALL_ID,
         });
-        
-        // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
-        // scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-        //   console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-        //   const booth = booths.find(b => b.id === event.boothId);
-        //   if (booth) {
-        //     handleBoothClick(booth);
-        //   }
-        // });
-      } else if (!scene) {
+      } else {
         // 씬이 없으면 추가하고 시작
-        console.log('[ExhibitionViewPhaser] 씬이 없습니다. 추가하고 시작...');
+        console.log('[ExhibitionViewPhaser] 씬 추가 및 시작');
         gameRef.current.scene.add('MainScene', MainScene);
         gameRef.current.scene.start('MainScene', {
           booths: booths,
@@ -150,14 +111,14 @@ export const ExhibitionViewPhaser: React.FC = () => {
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
           userId: user?.id,
-          hallId: currentHall?.id,
+          hallId: FIXED_HALL_ID,
         });
       }
-      // 씬이 있지만 아직 시작되지 않았으면 기다림 (preload 중일 수 있음)
       return;
     }
 
-    console.log('[ExhibitionViewPhaser] 새 게임 초기화 시작, 부스 개수:', booths.length);
+    // 새 게임 생성
+    console.log('[ExhibitionViewPhaser] 새 게임 초기화 시작, 쇼룸 개수:', booths.length);
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
@@ -188,22 +149,10 @@ export const ExhibitionViewPhaser: React.FC = () => {
       booths: booths,
       onBoothInteract: handleBoothClick,
       selectedCharacter: user?.selectedCharacter,
-      userNickname: user?.nickname, // 닉네임 전달
+      userNickname: user?.nickname,
       userId: user?.id,
-      hallId: currentHall?.id,
+      hallId: FIXED_HALL_ID,
     });
-
-    // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
-    // const scene = game.scene.getScene('MainScene') as MainScene;
-    // if (scene) {
-    //   scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-    //     console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-    //     const booth = booths.find(b => b.id === event.boothId);
-    //     if (booth) {
-    //       handleBoothClick(booth);
-    //     }
-    //   });
-    // }
 
     // 윈도우 리사이즈 핸들링
     const handleResize = () => {
@@ -215,58 +164,37 @@ export const ExhibitionViewPhaser: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      // 멀티플레이어 연결 정리
-      if (game) {
-        const scene = game.scene.getScene('MainScene') as MainScene;
-        if (scene) {
-          // MainScene의 cleanupMultiplayer가 호출되도록 씬 종료 이벤트 발생
-          // (실제로는 씬이 종료될 때 자동으로 cleanupMultiplayer가 호출됨)
-        }
+      // 멀티플레이어 서비스 연결 해제
+      const scene = gameRef.current?.scene.getScene('MainScene') as any;
+      if (scene && scene.multiplayerService) {
+        scene.multiplayerService.disconnect();
       }
-      // 게임은 컴포넌트 언마운트 시에만 destroy
-      // (홀 변경 시에는 handleHallChange에서 처리)
+      gameRef.current?.destroy(true);
+      gameRef.current = null;
     };
-  }, [booths.length, user?.selectedCharacter]); // booths.length만 의존성으로 사용하여 배열 참조 변경 무시
+  }, [booths, loading, user?.selectedCharacter]); // booths 배열 전체를 의존성으로 사용하여 내용 변경 감지
 
   // 캐릭터 변경 감지 및 씬 재시작
   useEffect(() => {
     if (!gameRef.current || characterChangedTrigger === 0) return;
 
-    console.log('Character changed, restarting scene...');
+    console.log('[ExhibitionViewPhaser] 캐릭터 변경 감지, 씬 재시작...');
     
-    // 현재 씬 가져오기
     const scene = gameRef.current.scene.getScene('MainScene') as MainScene;
     if (scene) {
-      // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
-      // scene.events.off('boothZoneInteract');
-      
-      // 씬 재시작
       scene.scene.restart({
         booths: booths,
         onBoothInteract: handleBoothClick,
         selectedCharacter: user?.selectedCharacter,
         userNickname: user?.nickname,
         userId: user?.id,
-        hallId: currentHall?.id,
+        hallId: FIXED_HALL_ID,
       });
-      
-      // 슬롯 시스템 비활성화 - 이벤트 리스너 재등록 제거
-      // scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-      //   console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-      //   const booth = booths.find(b => b.id === event.boothId);
-      //   if (booth) {
-      //     handleBoothClick(booth);
-      //   }
-      // });
     }
-  }, [characterChangedTrigger, user?.selectedCharacter, booths]);
+  }, [characterChangedTrigger]);
 
   if (loading) {
     return <div style={styles.loading}>로딩 중...</div>;
-  }
-
-  if (!currentExhibition || !currentHall) {
-    return <div style={styles.error}>전시 정보를 불러올 수 없습니다.</div>;
   }
 
   return (
@@ -274,24 +202,12 @@ export const ExhibitionViewPhaser: React.FC = () => {
       {/* 상단 헤더 */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <h1 style={styles.title}>🎮 {currentExhibition.title}</h1>
-          <p style={styles.subtitle}>방향키로 이동, E키로 쇼룸 상호작용</p>
+          <h1 style={styles.title}>🎮 ExpoGarden 메타버스</h1>
+          <p style={styles.subtitle}>
+            승인된 쇼룸 {booths.length}개 | 방향키로 이동, E키로 쇼룸 상호작용
+          </p>
         </div>
         <div style={styles.headerRight}>
-          <div style={styles.hallSelector}>
-            <label style={styles.label}>홀 선택:</label>
-            <select
-              value={currentHall.id}
-              onChange={(e) => handleHallChange(Number(e.target.value))}
-              style={styles.select}
-            >
-              {halls.map((hall) => (
-                <option key={hall.id} value={hall.id}>
-                  {hall.name} ({hall.boothCount}개 쇼룸)
-                </option>
-              ))}
-            </select>
-          </div>
           <button
             onClick={() => navigate('/')}
             style={styles.exitButton}

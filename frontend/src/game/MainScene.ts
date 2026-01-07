@@ -347,56 +347,54 @@ export class MainScene extends Phaser.Scene {
       '기타': 0x6b7280,
     };
 
-    // 월드 전체 크기
-    const worldWidth = 3000;
-    const worldHeight = 2000;
+    // 배경 이미지의 실제 월드 크기 사용
+    const worldWidth = this.physics.world.bounds.width;
+    const worldHeight = this.physics.world.bounds.height;
     
-    // 부스 크기
-    const boothWidth = 200;
-    const boothHeight = 150;
+    // 16개가 들어간다고 가정하고 4x4 그리드로 설계
+    const targetCols = 4;
+    const targetRows = 4;
     
-    // 여백 및 간격 설정
-    const marginX = 150; // 좌우 여백
-    const marginY = 150; // 상하 여백
-    const spacingX = 100; // 부스 간 가로 간격
-    const spacingY = 80;  // 부스 간 세로 간격
+    // 여백 설정
+    const marginX = worldWidth * 0.1; // 좌우 10%
+    const marginY = worldHeight * 0.1; // 상하 10%
     
-    // 월드 크기에 맞춰 최대 배치 가능한 개수 계산
     const availableWidth = worldWidth - (marginX * 2);
     const availableHeight = worldHeight - (marginY * 2);
     
-    // 가로로 몇 개 들어갈 수 있는지 계산
-    const maxCols = Math.floor((availableWidth + spacingX) / (boothWidth + spacingX));
-    // 세로로 몇 개 들어갈 수 있는지 계산
-    const maxRows = Math.floor((availableHeight + spacingY) / (boothHeight + spacingY));
+    // 부스 크기와 간격 자동 계산 (4x4 기준)
+    const spacingX = availableWidth * 0.05; // 간격 5%
+    const spacingY = availableHeight * 0.05;
     
-    // 총 슬롯 개수 (예: 10x8 = 80개)
-    const totalSlots = maxCols * maxRows;
+    const boothWidth = (availableWidth - (spacingX * (targetCols - 1))) / targetCols;
+    const boothHeight = (availableHeight - (spacingY * (targetRows - 1))) / targetRows;
     
     console.log('[MainScene] 그리드 설정:', {
-      worldSize: `${worldWidth}x${worldHeight}`,
-      boothSize: `${boothWidth}x${boothHeight}`,
-      maxCols,
-      maxRows,
-      totalSlots,
+      worldSize: `${Math.round(worldWidth)}x${Math.round(worldHeight)}`,
+      boothSize: `${Math.round(boothWidth)}x${Math.round(boothHeight)}`,
+      maxCols: targetCols,
+      maxRows: targetRows,
+      totalSlots: targetCols * targetRows,
       availableBooths: this.booths.length,
     });
 
-    // 시작 위치 (왼쪽 위, 오른쪽으로 약간 이동)
-    const startX = marginX + boothWidth / 2 + 50; // 오른쪽으로 100px 이동
-    const startY = marginY + boothHeight / 2;
+    // 시작 위치 (왼쪽 위, 오른쪽과 아래로 약간 이동)
+    const offsetX = worldWidth * 0.05; // 오른쪽으로 5% 이동
+    const offsetY = worldHeight * 0.05; // 아래로 5% 이동
+    const startX = marginX + boothWidth / 2 + offsetX;
+    const startY = marginY + boothHeight / 2 + offsetY;
 
     // 승인된 쇼룸을 슬롯에 순서대로 배치
     this.booths.forEach((booth, index) => {
       // 슬롯이 부족하면 경고
-      if (index >= totalSlots) {
-        console.warn(`[MainScene] 슬롯 부족: ${index + 1}번째 쇼룸을 배치할 수 없음 (최대 ${totalSlots}개)`);
+      if (index >= (targetCols * targetRows)) {
+        console.warn(`[MainScene] 슬롯 부족: ${index + 1}번째 쇼룸을 배치할 수 없음 (최대 ${targetCols * targetRows}개)`);
         return;
       }
       
       // 그리드 위치 계산
-      const row = Math.floor(index / maxCols);
-      const col = index % maxCols;
+      const row = Math.floor(index / targetCols);
+      const col = index % targetCols;
       
       // 실제 픽셀 좌표 계산
       const x = startX + col * (boothWidth + spacingX);

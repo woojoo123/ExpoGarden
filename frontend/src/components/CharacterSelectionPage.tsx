@@ -148,19 +148,19 @@ export const CharacterSelectionPage: React.FC = () => {
           <div style={styles.characterDisplaySection}>
             <p style={styles.instructionText}>사용할 캐릭터를 클릭해주세요!</p>
             <div style={styles.characterDisplayContainer}>
-              <button
+                <button
                 onClick={() => {
                   const prevIndex = selectedCharIndex > 0 ? selectedCharIndex - 1 : TOTAL_CHARACTERS - 1;
                   handleCharacterSelect(prevIndex);
                 }}
-                style={{
+                  style={{
                   ...styles.navButton,
                   ...(loading ? styles.navButtonDisabled : {}),
-                }}
-                disabled={loading}
-              >
+                  }}
+                  disabled={loading}
+                >
                 ‹
-              </button>
+                </button>
               
               <div
                 onClick={() => handleCharacterSelect(selectedCharIndex)}
@@ -179,21 +179,21 @@ export const CharacterSelectionPage: React.FC = () => {
                     overflow: 'hidden', // 한 프레임만 보이도록
                   }}
                 />
-              </div>
-              
-              <button
+            </div>
+
+                  <button
                 onClick={() => {
                   const nextIndex = selectedCharIndex < TOTAL_CHARACTERS - 1 ? selectedCharIndex + 1 : 0;
                   handleCharacterSelect(nextIndex);
                 }}
-                style={{
+                    style={{
                   ...styles.navButton,
                   ...(loading ? styles.navButtonDisabled : {}),
-                }}
-                disabled={loading}
-              >
+                    }}
+                    disabled={loading}
+                  >
                 ›
-              </button>
+                  </button>
             </div>
             <p style={styles.characterNumber}>캐릭터 {selectedCharIndex + 1} / {TOTAL_CHARACTERS}</p>
           </div>
