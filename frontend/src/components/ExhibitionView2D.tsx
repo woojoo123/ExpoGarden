@@ -99,12 +99,15 @@ export const ExhibitionView2D: React.FC = () => {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
+      '아트/디자인': '#ef4444',
+      '사진/영상': '#8b5cf6',
+      '일러스트': '#ec4899',
+      '게임': '#10b981',
+      '음악': '#f59e0b',
+      '3D': '#06b6d4',
+      '프로그래밍': '#6366f1',
       'AI': '#3b82f6',
-      'IoT': '#ef4444',
-      '메타버스': '#8b5cf6',
-      '모빌리티': '#10b981',
-      '헬스케어': '#f59e0b',
-      '클라우드': '#06b6d4',
+      '기타': '#6b7280',
     };
     return colors[category] || '#6b7280';
   };

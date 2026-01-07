@@ -291,14 +291,6 @@ export const BoothFormPage: React.FC = () => {
               <option value="3D">3D</option>
               <option value="프로그래밍">프로그래밍</option>
               <option value="AI">AI</option>
-              <option value="IoT">IoT</option>
-              <option value="메타버스">메타버스</option>
-              <option value="모빌리티">모빌리티</option>
-              <option value="헬스케어">헬스케어</option>
-              <option value="클라우드">클라우드</option>
-              <option value="블록체인">블록체인</option>
-              <option value="교육">교육</option>
-              <option value="엔터테인먼트">엔터테인먼트</option>
               <option value="기타">기타</option>
             </select>
           </div>

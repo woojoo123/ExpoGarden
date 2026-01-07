@@ -149,12 +149,15 @@ export class MainScene extends Phaser.Scene {
   private createBooths() {
     // 부스별 색상 매핑
     const categoryColors: Record<string, number> = {
+      '아트/디자인': 0xef4444,
+      '사진/영상': 0x8b5cf6,
+      '일러스트': 0xec4899,
+      '게임': 0x10b981,
+      '음악': 0xf59e0b,
+      '3D': 0x06b6d4,
+      '프로그래밍': 0x6366f1,
       'AI': 0x3b82f6,
-      'IoT': 0xef4444,
-      '메타버스': 0x8b5cf6,
-      '모빌리티': 0x10b981,
-      '헬스케어': 0xf59e0b,
-      '클라우드': 0x06b6d4,
+      '기타': 0x6b7280,
     };
 
     // 부스 배치 (그리드 형태)

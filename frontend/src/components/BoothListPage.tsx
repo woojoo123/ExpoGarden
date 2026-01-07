@@ -27,6 +27,7 @@ export const BoothListPage: React.FC = () => {
     '음악',
     '3D',
     '프로그래밍',
+    'AI',
     '기타'
   ];
 

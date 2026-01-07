@@ -130,12 +130,15 @@ export class LayoutEngine {
 
   private getColorByCategory(category: string): Color3 {
     const colors: Record<string, Color3> = {
-      AI: new Color3(0.3, 0.5, 1.0),
-      IoT: new Color3(0.9, 0.4, 0.2),
-      '메타버스': new Color3(0.8, 0.2, 0.8),
-      '모빌리티': new Color3(0.2, 0.8, 0.5),
-      '헬스케어': new Color3(1.0, 0.6, 0.6),
-      '클라우드': new Color3(0.5, 0.7, 0.9),
+      '아트/디자인': new Color3(0.9, 0.3, 0.3),
+      '사진/영상': new Color3(0.5, 0.3, 0.9),
+      '일러스트': new Color3(0.9, 0.3, 0.6),
+      '게임': new Color3(0.2, 0.8, 0.5),
+      '음악': new Color3(1.0, 0.6, 0.2),
+      '3D': new Color3(0.2, 0.7, 0.9),
+      '프로그래밍': new Color3(0.4, 0.4, 0.9),
+      'AI': new Color3(0.3, 0.5, 1.0),
+      '기타': new Color3(0.6, 0.6, 0.6),
     };
 
     return colors[category] || new Color3(0.6, 0.6, 0.6);
