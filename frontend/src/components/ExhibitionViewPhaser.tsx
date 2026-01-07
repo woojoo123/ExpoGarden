@@ -68,17 +68,26 @@ export const ExhibitionViewPhaser: React.FC = () => {
     });
   };
 
-  const handleBoothClick = (booth: Booth) => {
-    setSelectedBooth(booth);
+  const handleBoothClick = async (booth: Booth) => {
+    // 미디어를 포함한 전체 부스 데이터 가져오기
+    try {
+      const response = await apiClient.getBooth(booth.id);
+      const fullBooth = response.data;
+      setSelectedBooth(fullBooth);
 
-    // 트래킹: 부스 조회
-    if (currentExhibition) {
-      apiClient.trackEvent({
-        exhibitionId: currentExhibition.id,
-        boothId: booth.id,
-        sessionId,
-        action: 'VIEW',
-      });
+      // 트래킹: 부스 조회
+      if (currentExhibition) {
+        apiClient.trackEvent({
+          exhibitionId: currentExhibition.id,
+          boothId: booth.id,
+          sessionId,
+          action: 'VIEW',
+        });
+      }
+    } catch (error) {
+      console.error('부스 데이터 로드 실패:', error);
+      // 실패해도 기본 부스 데이터로 표시
+      setSelectedBooth(booth);
     }
   };
 
