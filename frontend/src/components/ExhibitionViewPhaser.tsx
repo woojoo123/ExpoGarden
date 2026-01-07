@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
-import { MainScene, type BoothZoneInteractEvent } from '@/game/MainScene';
+import { MainScene } from '@/game/MainScene';
+// import type { BoothZoneInteractEvent } from '@/game/MainScene'; // 슬롯 시스템 비활성화
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
 import { BoothPanel } from '@/components/BoothPanel';
@@ -120,14 +121,14 @@ export const ExhibitionViewPhaser: React.FC = () => {
           userNickname: user?.nickname,
         });
         
-        // 이벤트 리스너 재등록 (씬 재시작 시 필요)
-        scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-          console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-          const booth = booths.find(b => b.id === event.boothId);
-          if (booth) {
-            handleBoothClick(booth);
-          }
-        });
+        // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
+        // scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
+        //   console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
+        //   const booth = booths.find(b => b.id === event.boothId);
+        //   if (booth) {
+        //     handleBoothClick(booth);
+        //   }
+        // });
       } else if (!scene) {
         // 씬이 없으면 추가하고 시작
         console.log('[ExhibitionViewPhaser] 씬이 없습니다. 추가하고 시작...');
@@ -177,19 +178,17 @@ export const ExhibitionViewPhaser: React.FC = () => {
       userNickname: user?.nickname, // 닉네임 전달
     });
 
-    // 슬롯 존 상호작용 이벤트 리스너 (Phaser → React 브릿지)
-    const scene = game.scene.getScene('MainScene') as MainScene;
-    if (scene) {
-      scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-        console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-        const booth = booths.find(b => b.id === event.boothId);
-        if (booth) {
-          handleBoothClick(booth);
-        } else {
-          console.warn('[ExhibitionViewPhaser] boothId에 해당하는 쇼룸을 찾을 수 없음:', event.boothId);
-        }
-      });
-    }
+    // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
+    // const scene = game.scene.getScene('MainScene') as MainScene;
+    // if (scene) {
+    //   scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
+    //     console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
+    //     const booth = booths.find(b => b.id === event.boothId);
+    //     if (booth) {
+    //       handleBoothClick(booth);
+    //     }
+    //   });
+    // }
 
     // 윈도우 리사이즈 핸들링
     const handleResize = () => {
@@ -201,11 +200,11 @@ export const ExhibitionViewPhaser: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      // 이벤트 리스너 정리
-      const cleanupScene = game.scene.getScene('MainScene') as MainScene;
-      if (cleanupScene) {
-        cleanupScene.events.off('boothZoneInteract');
-      }
+      // 슬롯 시스템 비활성화 - 이벤트 리스너 정리 제거
+      // const cleanupScene = game.scene.getScene('MainScene') as MainScene;
+      // if (cleanupScene) {
+      //   cleanupScene.events.off('boothZoneInteract');
+      // }
       // 게임은 컴포넌트 언마운트 시에만 destroy
       // (홀 변경 시에는 handleHallChange에서 처리)
     };
@@ -220,8 +219,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
     // 현재 씬 가져오기
     const scene = gameRef.current.scene.getScene('MainScene') as MainScene;
     if (scene) {
-      // 기존 이벤트 리스너 제거
-      scene.events.off('boothZoneInteract');
+      // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
+      // scene.events.off('boothZoneInteract');
       
       // 씬 재시작
       scene.scene.restart({
@@ -231,14 +230,14 @@ export const ExhibitionViewPhaser: React.FC = () => {
         userNickname: user?.nickname,
       });
       
-      // 이벤트 리스너 재등록 (씬 재시작 후)
-      scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
-        console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
-        const booth = booths.find(b => b.id === event.boothId);
-        if (booth) {
-          handleBoothClick(booth);
-        }
-      });
+      // 슬롯 시스템 비활성화 - 이벤트 리스너 재등록 제거
+      // scene.events.on('boothZoneInteract', (event: BoothZoneInteractEvent) => {
+      //   console.log('[ExhibitionViewPhaser] 슬롯 존 상호작용 이벤트:', event);
+      //   const booth = booths.find(b => b.id === event.boothId);
+      //   if (booth) {
+      //     handleBoothClick(booth);
+      //   }
+      // });
     }
   }, [characterChangedTrigger, user?.selectedCharacter, booths]);
 
