@@ -415,17 +415,17 @@ export class MainScene extends Phaser.Scene {
       nameText.setOrigin(0.5);
       nameText.setDepth(6);
 
-      // 카테고리 뱃지
-      const categoryText = this.add.text(x, y + boothHeight / 2 + 15, booth.category, {
-        fontSize: '16px',
-        color: '#ffffff',
-        backgroundColor: `#${color.toString(16)}`,
-        padding: { x: 8, y: 4 },
-        stroke: '#000000',
-        strokeThickness: 2,
-      });
-      categoryText.setOrigin(0.5);
-      categoryText.setDepth(6);
+      // 카테고리 뱃지 제거 (사용자 요청)
+      // const categoryText = this.add.text(x, y + boothHeight / 2 + 15, booth.category, {
+      //   fontSize: '16px',
+      //   color: '#ffffff',
+      //   backgroundColor: `#${color.toString(16)}`,
+      //   padding: { x: 8, y: 4 },
+      //   stroke: '#000000',
+      //   strokeThickness: 2,
+      // });
+      // categoryText.setOrigin(0.5);
+      // categoryText.setDepth(6);
     });
   }
 
