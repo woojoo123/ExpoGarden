@@ -49,7 +49,7 @@ export class MainScene extends Phaser.Scene {
       this.selectedCharIndex = 0;
     }
     
-    console.log('[MainScene] 초기화 완료, 부스 개수:', this.booths.length, '캐릭터: Character64x64, 인덱스:', this.selectedCharIndex);
+    console.log('[MainScene] 초기화 완료, 쇼룸 개수:', this.booths.length, '캐릭터: Character64x64, 인덱스:', this.selectedCharIndex);
   }
 
   preload() {
@@ -65,7 +65,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
-    console.log('[MainScene] create() 호출됨, 부스 개수:', this.booths.length);
+    console.log('[MainScene] create() 호출됨, 쇼룸 개수:', this.booths.length);
     
     // 배경을 타일맵으로 교체 (타일 스프라이트로 반복 배경 생성)
     const tileSize = 64;
@@ -129,7 +129,7 @@ export class MainScene extends Phaser.Scene {
       displayHeight: this.player.displayHeight,
     });
 
-    // 부스 생성
+    // 쇼룸 생성
     this.createBooths();
 
     // 키보드 입력 설정
@@ -229,9 +229,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createBooths() {
-    console.log('[MainScene] createBooths() 호출됨, 부스 개수:', this.booths.length);
+    console.log('[MainScene] createBooths() 호출됨, 쇼룸 개수:', this.booths.length);
     
-    // 부스별 색상 매핑
+    // 쇼룸별 색상 매핑
     const categoryColors: Record<string, number> = {
       '아트/디자인': 0xef4444,
       '사진/영상': 0x8b5cf6,
@@ -244,26 +244,35 @@ export class MainScene extends Phaser.Scene {
       '기타': 0x6b7280,
     };
 
-    // 부스 배치 (양쪽에 줄지어 배치)
-    const leftStartX = 200; // 왼쪽 시작 X
-    const rightStartX = 2800; // 오른쪽 시작 X
-    const startY = 200; // 시작 Y
-    const spacingY = 250; // Y 간격 (줌에 맞춰 더 넓게)
-    const boothsPerSide = Math.ceil(this.booths.length / 2); // 한쪽당 부스 개수
+    // 쇼룸 배치 (플레이어 시작 위치 근처에 배치하여 보이도록)
+    const centerX = 1500; // 중앙 X (플레이어 시작 X와 동일)
+    const startY = 900; // 시작 Y (플레이어 시작 Y: 1000 근처)
+    const spacingX = 300; // X 간격
+    const spacingY = 250; // Y 간격
+    const colsPerRow = 4; // 한 줄에 배치할 쇼룸 개수
 
     this.booths.forEach((booth, index) => {
-      // 왼쪽 또는 오른쪽 결정
-      const isLeft = index < boothsPerSide;
-      const sideIndex = isLeft ? index : index - boothsPerSide;
+      // 그리드 형태로 배치 (중앙 기준)
+      const row = Math.floor(index / colsPerRow);
+      const col = index % colsPerRow;
       
-      const x = isLeft ? leftStartX : rightStartX;
-      const y = startY + sideIndex * spacingY;
+      const x = centerX + (col - colsPerRow / 2 + 0.5) * spacingX;
+      const y = startY + row * spacingY;
+      
+      console.log(`[MainScene] 쇼룸 ${index + 1} 배치:`, {
+        id: booth.id,
+        title: booth.title,
+        x,
+        y,
+        row,
+        col,
+      });
 
-      // 부스 그래픽 생성 (더 크게)
+      // 쇼룸 그래픽 생성 (더 크게)
       const graphics = this.add.graphics();
       const color = categoryColors[booth.category] || 0x6b7280;
       
-      // 부스 박스 (더 크게: 200x150 - 오른쪽 스크린샷처럼 크게)
+      // 쇼룸 박스 (더 크게: 200x150 - 오른쪽 스크린샷처럼 크게)
       graphics.fillStyle(color, 1);
       graphics.fillRoundedRect(-100, -75, 200, 150, 15);
       
@@ -274,7 +283,7 @@ export class MainScene extends Phaser.Scene {
       graphics.generateTexture(`booth_${booth.id}`, 200, 150);
       graphics.destroy();
 
-      // 부스 스프라이트 생성
+      // 쇼룸 스프라이트 생성
       const boothSprite = this.physics.add.sprite(x, y, `booth_${booth.id}`);
       boothSprite.setImmovable(true);
       boothSprite.setData('booth', booth);
@@ -282,7 +291,7 @@ export class MainScene extends Phaser.Scene {
       
       this.boothSprites.push(boothSprite);
 
-      // 부스 이름 텍스트 (더 크게 - 줌에 맞춰)
+      // 쇼룸 이름 텍스트 (더 크게 - 줌에 맞춰)
       const nameText = this.add.text(x, y - 100, booth.title, {
         fontSize: '20px',
         color: '#ffffff',
@@ -292,7 +301,7 @@ export class MainScene extends Phaser.Scene {
         strokeThickness: 3,
       });
       nameText.setOrigin(0.5);
-      nameText.setDepth(6); // 부스 위에 표시
+      nameText.setDepth(6); // 쇼룸 위에 표시
 
       // 카테고리 뱃지 (더 크게 - 줌에 맞춰)
       const categoryText = this.add.text(x, y + 90, booth.category, {
@@ -304,7 +313,7 @@ export class MainScene extends Phaser.Scene {
         strokeThickness: 2,
       });
       categoryText.setOrigin(0.5);
-      categoryText.setDepth(6); // 부스 위에 표시
+      categoryText.setDepth(6); // 쇼룸 위에 표시
     });
   }
 
@@ -346,7 +355,7 @@ export class MainScene extends Phaser.Scene {
     // 애니메이션 업데이트
     this.updatePlayerAnimation(velocityX, velocityY);
 
-    // 근처 부스 체크
+    // 근처 쇼룸 체크
     this.checkNearbyBooths();
 
     // 상호작용 텍스트 위치 업데이트
@@ -403,7 +412,7 @@ export class MainScene extends Phaser.Scene {
       this.nearbyBooth = foundBooth;
       
       if (foundBooth) {
-        this.interactionText.setText(`[E] ${foundBooth.title} 부스 보기`);
+        this.interactionText.setText(`[E] ${foundBooth.title} 쇼룸 보기`);
         this.interactionText.setVisible(true);
       } else {
         this.interactionText.setVisible(false);

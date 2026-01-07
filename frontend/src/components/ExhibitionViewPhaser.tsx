@@ -44,12 +44,16 @@ export const ExhibitionViewPhaser: React.FC = () => {
     }
   };
 
-  // 부스 목록 로드
+  // 쇼룸 목록 로드
   const loadBooths = async (exhibitionId: number, hallId: number) => {
     const response = await apiClient.getBooths({
       exhibitionId,
       hallId,
       status: 'APPROVED',
+    });
+    console.log('[ExhibitionViewPhaser] 쇼룸 로드 완료:', {
+      count: response.data.content.length,
+      booths: response.data.content.map(b => ({ id: b.id, title: b.title, status: b.status })),
     });
     setBooths(response.data.content);
 
@@ -207,7 +211,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h1 style={styles.title}>🎮 {currentExhibition.title}</h1>
-          <p style={styles.subtitle}>WASD 또는 방향키로 이동, E키로 부스 상호작용</p>
+          <p style={styles.subtitle}>WASD 또는 방향키로 이동, E키로 쇼룸 상호작용</p>
         </div>
         <div style={styles.headerRight}>
           <div style={styles.hallSelector}>
@@ -219,7 +223,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
             >
               {halls.map((hall) => (
                 <option key={hall.id} value={hall.id}>
-                  {hall.name} ({hall.boothCount}개 부스)
+                  {hall.name} ({hall.boothCount}개 쇼룸)
                 </option>
               ))}
             </select>
@@ -246,7 +250,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
         </div>
         <div style={styles.controlItem}>
           <span style={styles.key}>E</span>
-          <span style={styles.controlText}>부스 상호작용</span>
+          <span style={styles.controlText}>쇼룸 상호작용</span>
         </div>
         <div style={styles.controlItem}>
           <span style={styles.key}>마우스휠</span>
