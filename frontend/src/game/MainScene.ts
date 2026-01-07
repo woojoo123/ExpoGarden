@@ -16,7 +16,9 @@ export class MainScene extends Phaser.Scene {
   private nearbyBooth: Booth | null = null;
   private onBoothInteract?: (booth: Booth) => void;
   private interactionText!: Phaser.GameObjects.Text;
+  private playerNameText!: Phaser.GameObjects.Text;
   private selectedCharIndex: number = 0; // 선택된 캐릭터 인덱스 (0-9)
+  private userNickname: string = ''; // 사용자 닉네임
 
   constructor() {
     super({ key: 'MainScene' });
@@ -26,6 +28,7 @@ export class MainScene extends Phaser.Scene {
     booths: Booth[]; 
     onBoothInteract: (booth: Booth) => void; 
     selectedCharacter?: string; 
+    userNickname?: string;
   }) {
     console.log('[MainScene] init() 호출됨, 데이터:', {
       boothsCount: data?.booths?.length || 0,
@@ -35,6 +38,7 @@ export class MainScene extends Phaser.Scene {
     
     this.booths = data?.booths || [];
     this.onBoothInteract = data?.onBoothInteract;
+    this.userNickname = data?.userNickname || '';
     
     // selectedCharacter는 JSON 문자열: { charIndex: number, size: 'Character64x64' }
     // 크기는 항상 Character64x64로 고정
@@ -121,12 +125,27 @@ export class MainScene extends Phaser.Scene {
     // 스케일을 0.5로 설정 (64x64 캐릭터 기준)
     this.player.setScale(0.5);
     
+    // 플레이어 닉네임 텍스트 생성 (플레이어 머리 위에 표시)
+    if (this.userNickname) {
+      this.playerNameText = this.add.text(0, 0, this.userNickname, {
+        fontSize: '14px',
+        fontFamily: 'Arial',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 3,
+        align: 'center',
+      });
+      this.playerNameText.setDepth(20); // 플레이어보다 위에 표시
+      this.playerNameText.setOrigin(0.5, 1); // 중앙 정렬, 아래쪽 기준
+    }
+    
     console.log('[MainScene] 플레이어 생성 완료:', {
       frame: this.player.frame.name,
       width: this.player.width,
       height: this.player.height,
       displayWidth: this.player.displayWidth,
       displayHeight: this.player.displayHeight,
+      nickname: this.userNickname,
     });
 
     // 쇼룸 생성
@@ -358,6 +377,11 @@ export class MainScene extends Phaser.Scene {
 
     // 애니메이션 업데이트
     this.updatePlayerAnimation(velocityX, velocityY);
+
+    // 플레이어 닉네임 텍스트 위치 업데이트 (플레이어 머리 위)
+    if (this.playerNameText) {
+      this.playerNameText.setPosition(this.player.x, this.player.y - this.player.displayHeight / 2 - 5);
+    }
 
     // 근처 쇼룸 체크
     this.checkNearbyBooths();

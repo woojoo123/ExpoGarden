@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Phaser from 'phaser';
 import { MainScene } from '@/game/MainScene';
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
 import { BoothPanel } from '@/components/BoothPanel';
-import { AdminPanel } from '@/components/AdminPanel';
 import type { Exhibition, Hall, Booth } from '@/types';
 
 export const ExhibitionViewPhaser: React.FC = () => {
+  const navigate = useNavigate();
   const { sessionId, user, characterChangedTrigger } = useStore();
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +117,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
           booths: booths,
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
+          userNickname: user?.nickname,
         });
       } else if (!scene) {
         // 씬이 없으면 추가하고 시작
@@ -125,6 +127,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
           booths: booths,
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
+          userNickname: user?.nickname,
         });
       }
       // 씬이 있지만 아직 시작되지 않았으면 기다림 (preload 중일 수 있음)
@@ -162,6 +165,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
       booths: booths,
       onBoothInteract: handleBoothClick,
       selectedCharacter: user?.selectedCharacter,
+      userNickname: user?.nickname, // 닉네임 전달
     });
 
     // 윈도우 리사이즈 핸들링
@@ -193,6 +197,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
         booths: booths,
         onBoothInteract: handleBoothClick,
         selectedCharacter: user?.selectedCharacter,
+        userNickname: user?.nickname,
       });
     }
   }, [characterChangedTrigger, user?.selectedCharacter, booths]);
@@ -228,11 +233,14 @@ export const ExhibitionViewPhaser: React.FC = () => {
               ))}
             </select>
           </div>
+          <button
+            onClick={() => navigate('/')}
+            style={styles.exitButton}
+          >
+            나가기
+          </button>
         </div>
       </div>
-
-      {/* 관리자 패널 */}
-      <AdminPanel />
 
       {/* Phaser 게임 컨테이너 */}
       <div ref={containerRef} style={styles.gameContainer} />
@@ -306,6 +314,17 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '16px',
     alignItems: 'center',
   },
+  userPanelToggle: {
+    padding: '8px 12px',
+    fontSize: '12px',
+    borderRadius: '999px',
+    border: '1px solid #e5e7eb',
+    backgroundColor: '#f9fafb',
+    color: '#374151',
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    whiteSpace: 'nowrap',
+  },
   title: {
     margin: 0,
     fontSize: '24px',
@@ -335,6 +354,17 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#ffffff',
     color: '#333333',
     cursor: 'pointer',
+  },
+  exitButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#ffffff',
+    backgroundColor: '#dc3545',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
   },
   gameContainer: {
     flex: 1,
