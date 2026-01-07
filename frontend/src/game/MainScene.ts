@@ -67,21 +67,14 @@ export class MainScene extends Phaser.Scene {
   create() {
     console.log('[MainScene] create() 호출됨, 부스 개수:', this.booths.length);
     
-    // 배경 생성 (밝은 베이지/갈색 바닥)
-    this.add.rectangle(0, 0, 3000, 2000, 0xe8dcc0).setOrigin(0, 0);
-
-    // 그리드 라인 추가 (부드러운 색상)
-    const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0xd4c5a9, 0.4);
-    for (let x = 0; x < 3000; x += 50) {
-      graphics.moveTo(x, 0);
-      graphics.lineTo(x, 2000);
+    // 배경을 타일맵으로 교체 (타일 스프라이트로 반복 배경 생성)
+    const tileSize = 64;
+    const tileColor = 0xe8dcc0; // 밝은 베이지/갈색
+    for (let y = 0; y < 2000; y += tileSize) {
+      for (let x = 0; x < 3000; x += tileSize) {
+        this.add.rectangle(x + tileSize/2, y + tileSize/2, tileSize, tileSize, tileColor).setOrigin(0.5);
+      }
     }
-    for (let y = 0; y < 2000; y += 50) {
-      graphics.moveTo(0, y);
-      graphics.lineTo(3000, y);
-    }
-    graphics.strokePath();
 
     // 애니메이션 생성
     this.createAnimations();
@@ -96,11 +89,45 @@ export class MainScene extends Phaser.Scene {
     const idleDownRow = baseRow; // 첫 번째 걷기 프레임이 idle 상태
     const startFrame = idleDownRow * 8 + idleDownCol;
     
+    console.log('[MainScene] 캐릭터 생성:', {
+      selectedCharIndex: this.selectedCharIndex,
+      blockX,
+      blockY,
+      baseCol,
+      baseRow,
+      idleDownCol,
+      idleDownRow,
+      startFrame,
+    });
+    
+    // 스프라이트 시트가 제대로 로드되었는지 확인
+    const texture = this.textures.get('Character64x64');
+    if (texture) {
+      console.log('[MainScene] 스프라이트 시트 정보:', {
+        frameTotal: texture.frameTotal,
+        source: texture.source,
+      });
+    }
+    
     this.player = this.physics.add.sprite(1500, 1000, 'Character64x64', startFrame);
     this.player.setDepth(10);
     
-    // 캐릭터 크기 조정 (64x64 기준 1.5배)
-    this.player.setScale(1.5);
+    // 스프라이트가 정확히 한 프레임만 보이도록 설정
+    this.player.setFrame(startFrame);
+    
+    // 물리 크기는 64x64로 설정 (충돌 감지용)
+    this.player.setSize(64, 64);
+    
+    // 스케일을 0.5로 설정 (64x64 캐릭터 기준)
+    this.player.setScale(0.5);
+    
+    console.log('[MainScene] 플레이어 생성 완료:', {
+      frame: this.player.frame.name,
+      width: this.player.width,
+      height: this.player.height,
+      displayWidth: this.player.displayWidth,
+      displayHeight: this.player.displayHeight,
+    });
 
     // 부스 생성
     this.createBooths();
@@ -124,7 +151,22 @@ export class MainScene extends Phaser.Scene {
     // 카메라 설정
     this.cameras.main.setBounds(0, 0, 3000, 2000);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-    this.cameras.main.setZoom(1.2); // 줌을 약간 줄여서 더 넓은 화면 보기
+    this.cameras.main.setZoom(1.2); // 1.0~1.4 범위로 조정
+    
+    // 마우스 휠 줌 설정 (min: 1.0, max: 1.4)
+    this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: any[], _deltaX: number, deltaY: number, _deltaZ: number) => {
+      const currentZoom = this.cameras.main.zoom;
+      const zoomSpeed = 0.1;
+      let newZoom = currentZoom;
+      
+      if (deltaY > 0) {
+        newZoom = Math.max(1.0, currentZoom - zoomSpeed); // 최소 1.0
+      } else {
+        newZoom = Math.min(1.4, currentZoom + zoomSpeed); // 최대 1.4
+      }
+      
+      this.cameras.main.setZoom(newZoom);
+    });
 
     // 상호작용 텍스트
     this.interactionText = this.add.text(0, 0, '', {
@@ -206,7 +248,7 @@ export class MainScene extends Phaser.Scene {
     const leftStartX = 200; // 왼쪽 시작 X
     const rightStartX = 2800; // 오른쪽 시작 X
     const startY = 200; // 시작 Y
-    const spacingY = 180; // Y 간격
+    const spacingY = 250; // Y 간격 (줌에 맞춰 더 넓게)
     const boothsPerSide = Math.ceil(this.booths.length / 2); // 한쪽당 부스 개수
 
     this.booths.forEach((booth, index) => {
@@ -221,15 +263,15 @@ export class MainScene extends Phaser.Scene {
       const graphics = this.add.graphics();
       const color = categoryColors[booth.category] || 0x6b7280;
       
-      // 부스 박스 (더 크게: 140x100)
+      // 부스 박스 (더 크게: 200x150 - 오른쪽 스크린샷처럼 크게)
       graphics.fillStyle(color, 1);
-      graphics.fillRoundedRect(-70, -50, 140, 100, 10);
+      graphics.fillRoundedRect(-100, -75, 200, 150, 15);
       
       // 테두리 (더 두껍게)
-      graphics.lineStyle(4, 0xffffff, 0.9);
-      graphics.strokeRoundedRect(-70, -50, 140, 100, 10);
+      graphics.lineStyle(6, 0xffffff, 0.9);
+      graphics.strokeRoundedRect(-100, -75, 200, 150, 15);
       
-      graphics.generateTexture(`booth_${booth.id}`, 140, 100);
+      graphics.generateTexture(`booth_${booth.id}`, 200, 150);
       graphics.destroy();
 
       // 부스 스프라이트 생성
@@ -240,26 +282,26 @@ export class MainScene extends Phaser.Scene {
       
       this.boothSprites.push(boothSprite);
 
-      // 부스 이름 텍스트 (더 크게)
-      const nameText = this.add.text(x, y - 70, booth.title, {
-        fontSize: '14px',
+      // 부스 이름 텍스트 (더 크게 - 줌에 맞춰)
+      const nameText = this.add.text(x, y - 100, booth.title, {
+        fontSize: '20px',
         color: '#ffffff',
         backgroundColor: '#000000',
-        padding: { x: 8, y: 4 },
+        padding: { x: 12, y: 6 },
         stroke: '#000000',
-        strokeThickness: 2,
+        strokeThickness: 3,
       });
       nameText.setOrigin(0.5);
       nameText.setDepth(6); // 부스 위에 표시
 
-      // 카테고리 뱃지 (더 크게)
-      const categoryText = this.add.text(x, y + 60, booth.category, {
-        fontSize: '12px',
+      // 카테고리 뱃지 (더 크게 - 줌에 맞춰)
+      const categoryText = this.add.text(x, y + 90, booth.category, {
+        fontSize: '16px',
         color: '#ffffff',
         backgroundColor: `#${color.toString(16)}`,
-        padding: { x: 6, y: 3 },
+        padding: { x: 8, y: 4 },
         stroke: '#000000',
-        strokeThickness: 1,
+        strokeThickness: 2,
       });
       categoryText.setOrigin(0.5);
       categoryText.setDepth(6); // 부스 위에 표시
