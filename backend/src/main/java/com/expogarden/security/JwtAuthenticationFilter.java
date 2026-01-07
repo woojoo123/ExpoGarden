@@ -32,28 +32,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String jwt = getJwtFromRequest(request);
+            String requestPath = request.getRequestURI();
+            String requestMethod = request.getMethod();
             
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                String tokenType = tokenProvider.getTokenType(jwt);
+            log.debug("JWT Filter - {} {} | Has JWT: {}", requestMethod, requestPath, StringUtils.hasText(jwt));
+            
+            if (StringUtils.hasText(jwt)) {
+                boolean isValid = tokenProvider.validateToken(jwt);
+                log.debug("JWT Filter - Token valid: {}", isValid);
                 
-                // Access 토큰만 인증에 사용
-                if ("access".equals(tokenType)) {
-                    Long userId = tokenProvider.getUserIdFromToken(jwt);
-                    UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+                if (isValid) {
+                    String tokenType = tokenProvider.getTokenType(jwt);
+                    log.debug("JWT Filter - Token type: {}", tokenType);
                     
-                    UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
+                    // Access 토큰만 인증에 사용
+                    if ("access".equals(tokenType)) {
+                        Long userId = tokenProvider.getUserIdFromToken(jwt);
+                        log.debug("JWT Filter - User ID: {}", userId);
+                        
+                        UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+                        log.debug("JWT Filter - User: {} | Authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
+                        
+                        UsernamePasswordAuthenticationToken authentication = 
+                            new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                            );
+                        
+                        authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
                         );
-                    
-                    authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
-                    
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.debug("JWT Filter - Authentication set in SecurityContext");
+                    } else {
+                        log.warn("JWT Filter - Token type is not 'access': {}", tokenType);
+                    }
+                } else {
+                    log.warn("JWT Filter - Token validation failed for {} {}", requestMethod, requestPath);
                 }
+            } else {
+                log.debug("JWT Filter - No JWT token in request");
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context", ex);

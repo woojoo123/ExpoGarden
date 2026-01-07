@@ -22,6 +22,8 @@ public class BoothService {
     private final BoothRepository boothRepository;
     private final BoothMediaRepository boothMediaRepository;
     private final UserRepository userRepository;
+    private final ExhibitionService exhibitionService;
+    private final HallService hallService;
     
     @Transactional(readOnly = true)
     public Page<BoothDto> getBooths(
@@ -78,9 +80,13 @@ public class BoothService {
     
     @Transactional
     public BoothDto createBooth(BoothCreateRequest request, UserPrincipal principal) {
+        // 개인 쇼룸 플랫폼: 기본 전시/홀 자동 할당
+        Exhibition defaultExhibition = exhibitionService.getOrCreateDefaultExhibition();
+        Hall defaultHall = hallService.getOrCreateDefaultHall(defaultExhibition.getId());
+        
         Booth booth = Booth.builder()
-            .exhibitionId(request.getExhibitionId())
-            .hallId(request.getHallId())
+            .exhibitionId(defaultExhibition.getId())
+            .hallId(defaultHall.getId())
             .ownerUserId(principal.getId())
             .status(BoothStatus.DRAFT)
             .title(request.getTitle())

@@ -40,6 +40,26 @@ public class ExhibitionService {
         return mapToDto(exhibition);
     }
     
+    /**
+     * 기본 전시를 가져오거나 생성합니다.
+     * 개인 쇼룸 플랫폼에서는 하나의 기본 전시만 사용합니다.
+     */
+    @Transactional
+    public Exhibition getOrCreateDefaultExhibition() {
+        // slug가 'default'인 전시를 찾거나 생성
+        return exhibitionRepository.findBySlug("default")
+            .orElseGet(() -> {
+                Exhibition defaultExhibition = Exhibition.builder()
+                    .slug("default")
+                    .title("ExpoGarden 쇼룸")
+                    .description("개인 쇼룸을 자유롭게 만들어보세요")
+                    .status(ExhibitionStatus.PUBLISHED)
+                    .build();
+                
+                return exhibitionRepository.save(defaultExhibition);
+            });
+    }
+    
     private ExhibitionDto mapToDto(Exhibition exhibition) {
         long hallCount = hallRepository.findByExhibitionId(exhibition.getId()).size();
         long boothCount = boothRepository.countByExhibitionIdAndApproved(exhibition.getId());

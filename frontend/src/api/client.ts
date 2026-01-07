@@ -23,10 +23,30 @@ class ApiClient {
       },
     });
 
-    // 요청 인터셉터: 토큰 추가
+    // 요청 인터셉터: 토큰 추가 (localStorage에서 직접 읽어서 항상 최신 토큰 사용)
     this.client.interceptors.request.use((config) => {
-      if (this.accessToken) {
+      // localStorage에서 직접 읽어서 항상 최신 토큰 사용
+      const stored = localStorage.getItem('tokens');
+      if (stored) {
+        try {
+          const tokens = JSON.parse(stored);
+          if (tokens.accessToken) {
+            config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+            // this.accessToken도 동기화
+            this.accessToken = tokens.accessToken;
+            console.log('[API Client] Token added to request:', config.url, 'Token exists:', !!tokens.accessToken);
+          } else {
+            console.warn('[API Client] No accessToken in stored tokens');
+          }
+        } catch (e) {
+          console.error('[API Client] Failed to parse tokens from localStorage:', e);
+        }
+      } else if (this.accessToken) {
+        // 폴백: this.accessToken 사용
         config.headers.Authorization = `Bearer ${this.accessToken}`;
+        console.log('[API Client] Using fallback accessToken:', config.url);
+      } else {
+        console.warn('[API Client] No token available for request:', config.url);
       }
       return config;
     });
@@ -98,7 +118,7 @@ class ApiClient {
   }
 
   // Auth
-  async signup(email: string, password: string, nickname: string, role: string = 'VISITOR') {
+  async signup(email: string, password: string, nickname: string, role: string = 'EXHIBITOR') {
     const response = await this.client.post<ApiResponse<any>>('/auth/signup', {
       email,
       password,

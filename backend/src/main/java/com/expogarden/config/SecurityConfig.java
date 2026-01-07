@@ -69,7 +69,7 @@ public class SecurityConfig {
                     "/auth/refresh",
                     "/auth/me",
                     "/exhibitions/**",
-                    "/booths/**",
+                    "/booths",  // GET /booths (목록 조회만 허용)
                     "/track",
                     "/actuator/**",
                     "/oauth2/**",
@@ -78,7 +78,8 @@ public class SecurityConfig {
                     "/ws/**",
                     "/statistics/**"
                 ).permitAll()
-                // 나머지는 인증 필요
+                // /booths/{id}는 @PreAuthorize에서 처리 (APPROVED면 principal null 허용)
+                // POST /booths는 인증 필요
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

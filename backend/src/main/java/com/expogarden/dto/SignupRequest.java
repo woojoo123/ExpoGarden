@@ -3,7 +3,6 @@ package com.expogarden.dto;
 import com.expogarden.domain.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -22,7 +21,7 @@ public class SignupRequest {
     @Size(max = 100)
     private String nickname;
     
-    @NotNull
+    // role은 선택사항 (기본값: EXHIBITOR)
     private Role role;
 }
 

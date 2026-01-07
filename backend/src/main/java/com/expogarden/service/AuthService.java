@@ -29,11 +29,14 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
         
+        // role이 제공되지 않으면 기본값으로 EXHIBITOR 설정
+        Role userRole = request.getRole() != null ? request.getRole() : Role.EXHIBITOR;
+        
         User user = User.builder()
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .nickname(request.getNickname())
-            .role(request.getRole())
+            .role(userRole)
             .build();
         
         user = userRepository.save(user);

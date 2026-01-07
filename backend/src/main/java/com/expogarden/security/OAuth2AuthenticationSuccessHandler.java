@@ -46,7 +46,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 User newUser = User.builder()
                     .email(email)
                     .nickname(name != null ? name : email.split("@")[0])
-                    .role(Role.VISITOR) // 기본 역할
+                    .role(Role.EXHIBITOR) // 기본 역할: 모든 로그인 사용자가 쇼룸 생성 가능
                     .passwordHash(null) // OAuth 전용 계정은 비밀번호 없음
                     .build();
                 

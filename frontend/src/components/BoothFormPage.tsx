@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
-import type { Exhibition, Hall, Booth } from '@/types';
+import type { Booth } from '@/types';
 
 interface MediaItem {
   type: 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK';
@@ -18,13 +18,9 @@ export const BoothFormPage: React.FC = () => {
   const isEditMode = !!id;
 
   const [loading, setLoading] = useState(false);
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
-  const [halls, setHalls] = useState<Hall[]>([]);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    exhibitionId: '',
-    hallId: '',
     title: '',
     summary: '',
     description: '',
@@ -37,56 +33,44 @@ export const BoothFormPage: React.FC = () => {
 
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
-  const [submitAfterCreate, setSubmitAfterCreate] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/');
-      return;
-    }
+    // 로그인 체크 (토큰이 있으면 사용자 정보 복원 시도)
+    const checkAuth = async () => {
+      if (!user) {
+        const tokens = localStorage.getItem('tokens');
+        if (tokens) {
+          try {
+            // 토큰이 있으면 사용자 정보 복원 시도
+            const response = await apiClient.getMe();
+            useStore.getState().setUser(response.data);
+            // 복원 후 계속 진행
+            if (isEditMode) {
+              loadBooth();
+            }
+          } catch (error) {
+            // 토큰이 유효하지 않으면 로그인 페이지로
+            alert('로그인이 필요합니다.');
+            navigate('/login');
+          }
+        } else {
+          // 토큰도 없으면 로그인 페이지로
+          alert('로그인이 필요합니다.');
+          navigate('/login');
+        }
+        return;
+      }
 
-    loadExhibitions();
+      // 로그인되어 있으면 정상 진행
+      if (isEditMode) {
+        loadBooth();
+      }
+    };
 
-    if (isEditMode) {
-      loadBooth();
-    }
+    checkAuth();
   }, [user, id]);
 
-  useEffect(() => {
-    if (formData.exhibitionId) {
-      loadHalls(Number(formData.exhibitionId));
-    }
-  }, [formData.exhibitionId]);
-
-  const loadExhibitions = async () => {
-    try {
-      const response = await apiClient.getExhibitions('PUBLISHED');
-      setExhibitions(response.data.content);
-      if (response.data.content.length > 0 && !isEditMode) {
-        setFormData((prev) => ({
-          ...prev,
-          exhibitionId: response.data.content[0].id.toString(),
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to load exhibitions:', error);
-    }
-  };
-
-  const loadHalls = async (exhibitionId: number) => {
-    try {
-      const response = await apiClient.getHalls(exhibitionId);
-      setHalls(response.data);
-      if (response.data.length > 0 && !isEditMode) {
-        setFormData((prev) => ({
-          ...prev,
-          hallId: response.data[0].id.toString(),
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to load halls:', error);
-    }
-  };
+  // 개인 쇼룸 플랫폼: 전시/홀 선택 불필요 (자동 할당)
 
   const loadBooth = async () => {
     if (!id) return;
@@ -96,8 +80,6 @@ export const BoothFormPage: React.FC = () => {
       const booth = response.data;
 
       setFormData({
-        exhibitionId: booth.exhibitionId.toString(),
-        hallId: booth.hallId.toString(),
         title: booth.title,
         summary: booth.summary || '',
         description: booth.description || '',
@@ -171,15 +153,21 @@ export const BoothFormPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    // 로그인 체크
+    const currentUser = useStore.getState().user;
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      navigate('/login');
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     try {
+      // 개인 쇼룸 플랫폼: 전시/홀은 백엔드에서 자동 할당
       const payload = {
-        exhibitionId: Number(formData.exhibitionId),
-        hallId: Number(formData.hallId),
         title: formData.title,
         summary: formData.summary,
         description: formData.description,
@@ -193,28 +181,42 @@ export const BoothFormPage: React.FC = () => {
 
       if (isEditMode) {
         await apiClient.updateBooth(Number(id), payload);
-        alert('부스가 수정되었습니다!');
+        alert('쇼룸이 수정되었습니다!');
         navigate('/my/booths');
       } else {
         const response = await apiClient.createBooth(payload);
         const createdBoothId = response.data.id;
-        alert('부스가 생성되었습니다!');
         
-        // 등록 후 제출 옵션이 체크되어 있으면 자동으로 제출
-        if (submitAfterCreate) {
-          try {
-            await apiClient.submitBooth(createdBoothId);
-            alert('부스가 승인 요청(제출)되었습니다!');
-          } catch (submitError) {
-            console.error('제출 실패:', submitError);
-            alert('부스는 생성되었지만 제출에 실패했습니다. 목록에서 제출해주세요.');
-          }
+        // 생성 후 자동으로 제출
+        try {
+          await apiClient.submitBooth(createdBoothId);
+          alert('쇼룸이 제출되었습니다! 관리자 승인 후 갤러리에 노출됩니다.');
+        } catch (submitError) {
+          console.error('제출 실패:', submitError);
+          alert('쇼룸은 생성되었지만 제출에 실패했습니다. 내 쇼룸 관리에서 제출해주세요.');
         }
         
-        navigate('/my/booths');
+        // 생성 완료 후 상세 페이지로 이동
+        navigate(`/showroom/${createdBoothId}?created=true`);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || '저장 실패');
+      console.error('Booth creation error:', err);
+      
+      // 401 에러 처리
+      if (err.response?.status === 401) {
+        alert('로그인이 만료되었습니다. 다시 로그인해주세요.');
+        apiClient.clearTokens();
+        useStore.getState().setUser(null);
+        navigate('/login');
+        return;
+      }
+      
+      // 기타 에러
+      const errorMessage = err.response?.data?.error?.message || 
+                          err.response?.data?.message || 
+                          '저장에 실패했습니다.';
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -223,53 +225,15 @@ export const BoothFormPage: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1>{isEditMode ? '부스 수정' : '새 부스 등록'}</h1>
+        <h1>{isEditMode ? '쇼룸 수정' : '새 쇼룸 만들기'}</h1>
         <button onClick={() => navigate('/my/booths')} style={styles.backBtn}>
-          ← 목록으로
+          ← 내 쇼룸으로
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={(e) => { e.preventDefault(); }} style={styles.form}>
         <div style={styles.section}>
           <h2>기본 정보</h2>
-
-          <div style={styles.field}>
-            <label style={styles.label}>전시 선택</label>
-            <select
-              name="exhibitionId"
-              value={formData.exhibitionId}
-              onChange={handleChange}
-              style={styles.select}
-              required
-              disabled={isEditMode}
-            >
-              <option value="">전시를 선택하세요</option>
-              {exhibitions.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={styles.field}>
-            <label style={styles.label}>홀 선택</label>
-            <select
-              name="hallId"
-              value={formData.hallId}
-              onChange={handleChange}
-              style={styles.select}
-              required
-              disabled={isEditMode}
-            >
-              <option value="">홀을 선택하세요</option>
-              {halls.map((hall) => (
-                <option key={hall.id} value={hall.id}>
-                  {hall.name}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div style={styles.field}>
             <label style={styles.label}>부스 제목 *</label>
@@ -311,14 +275,32 @@ export const BoothFormPage: React.FC = () => {
 
           <div style={styles.field}>
             <label style={styles.label}>카테고리</label>
-            <input
-              type="text"
+            <select
               name="category"
               value={formData.category}
               onChange={handleChange}
-              style={styles.input}
-              placeholder="예: AI, IoT, 메타버스"
-            />
+              style={styles.select}
+              required
+            >
+              <option value="">카테고리를 선택하세요</option>
+              <option value="아트/디자인">아트/디자인</option>
+              <option value="사진/영상">사진/영상</option>
+              <option value="일러스트">일러스트</option>
+              <option value="게임">게임</option>
+              <option value="음악">음악</option>
+              <option value="3D">3D</option>
+              <option value="프로그래밍">프로그래밍</option>
+              <option value="AI">AI</option>
+              <option value="IoT">IoT</option>
+              <option value="메타버스">메타버스</option>
+              <option value="모빌리티">모빌리티</option>
+              <option value="헬스케어">헬스케어</option>
+              <option value="클라우드">클라우드</option>
+              <option value="블록체인">블록체인</option>
+              <option value="교육">교육</option>
+              <option value="엔터테인먼트">엔터테인먼트</option>
+              <option value="기타">기타</option>
+            </select>
           </div>
 
           <div style={styles.field}>
@@ -445,33 +427,15 @@ export const BoothFormPage: React.FC = () => {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        {!isEditMode && (
-          <div style={styles.submitSection}>
-            <h3 style={styles.submitTitle}>제출 옵션</h3>
-            <div style={styles.checkboxField}>
-              <input
-                type="checkbox"
-                id="submitAfterCreate"
-                checked={submitAfterCreate}
-                onChange={(e) => setSubmitAfterCreate(e.target.checked)}
-              />
-              <label htmlFor="submitAfterCreate" style={styles.checkboxLabel}>
-                <strong>등록 후 바로 제출하기</strong> (승인 요청 상태로 변경)
-              </label>
-            </div>
-            <p style={styles.hint}>
-              💡 체크하면 부스가 등록된 후 자동으로 관리자에게 승인 요청이 전송됩니다.<br />
-              체크하지 않으면 임시저장(DRAFT) 상태로 저장되며, 나중에 '내 부스 관리'에서 제출할 수 있습니다.
-            </p>
-          </div>
-        )}
-
         <div style={styles.footer}>
           <button type="button" onClick={() => navigate('/my/booths')} style={styles.cancelBtn}>
             취소
           </button>
           <button type="submit" style={styles.submitBtn} disabled={loading}>
-            {loading ? '⏳ 저장 중...' : isEditMode ? '✅ 수정하기' : (submitAfterCreate ? '📤 등록 및 제출하기' : '💾 등록하기')}
+            {loading 
+              ? (isEditMode ? '⏳ 저장 중...' : '⏳ 제출 중...')
+              : (isEditMode ? '✅ 수정하기' : '📤 제출하기')
+            }
           </button>
         </div>
       </form>
@@ -650,7 +614,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   submitBtn: {
     padding: '12px 24px',
-    backgroundColor: '#007bff',
+    backgroundColor: '#28a745',
     color: '#fff',
     border: 'none',
     borderRadius: '4px',

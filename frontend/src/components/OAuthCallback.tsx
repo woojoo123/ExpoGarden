@@ -63,6 +63,10 @@ export const OAuthCallback: React.FC = () => {
         if (returnTo === 'metaverse') {
           console.log('→ Navigating to /character-selection');
           navigate('/character-selection');
+        } else if (returnTo && returnTo.startsWith('showroom/')) {
+          // 쇼룸 상세 페이지로 돌아가기
+          console.log('→ Navigating to /', returnTo);
+          navigate(`/${returnTo}`);
         } else {
           console.log('→ Navigating to / (main page)');
           navigate('/');

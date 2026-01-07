@@ -65,7 +65,7 @@ public class BoothController {
     }
     
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'EXHIBITOR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> createBooth(
         @Valid @RequestBody BoothCreateRequest request,
         @AuthenticationPrincipal UserPrincipal principal

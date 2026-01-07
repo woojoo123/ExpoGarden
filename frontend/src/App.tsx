@@ -10,6 +10,8 @@ import { BoothFormPage } from './components/BoothFormPage';
 import { AdminDashboard } from './components/AdminDashboard';
 import { StatisticsPage } from './components/StatisticsPage';
 import { CharacterSelectionPage } from './components/CharacterSelectionPage';
+import { BoothListPage } from './components/BoothListPage';
+import { ShowroomDetailPage } from './components/ShowroomDetailPage';
 import { apiClient } from './api/client';
 import { useStore } from './state/store';
 
@@ -42,6 +44,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/booths" element={<BoothListPage />} />
+        <Route path="/showroom/:id" element={<ShowroomDetailPage />} />
         <Route path="/metaverse" element={<ExhibitionViewPhaser />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/character-selection" element={<CharacterSelectionPage />} />

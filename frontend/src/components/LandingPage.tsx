@@ -40,26 +40,16 @@ export const LandingPage: React.FC = () => {
         </div>
         <nav style={styles.nav}>
           <a href="#features" style={styles.navLink}>소개</a>
-          <a href="#about" style={styles.navLink}>서비스</a>
+          <button onClick={() => navigate('/booths')} style={styles.navLinkButton}>쇼룸 갤러리</button>
           <a href="#contact" style={styles.navLink}>문의</a>
-          {user && (
-            <>
-              <button onClick={() => navigate('/my/booths')} style={styles.navButton}>
-                📋 내 부스
-              </button>
-              <button onClick={() => navigate('/my/booths/new')} style={styles.navButton}>
-                ➕ 부스 신청
-              </button>
-              {user.role === 'ADMIN' && (
-                <button onClick={() => navigate('/admin/booths')} style={styles.navButton}>
-                  🛡️ 관리자
-                </button>
-              )}
-            </>
+          {user?.role === 'ADMIN' && (
+            <button onClick={() => navigate('/admin/booths')} style={styles.navButton}>
+              🛡️ 관리자
+            </button>
           )}
           {user ? (
             <div style={styles.userInfo}>
-              <span style={styles.userName}>{user.nickname}</span>
+              {/* <span style={styles.userName}>{user.nickname}</span> */}
               <button onClick={handleLogout} style={styles.logoutBtn}>로그아웃</button>
             </div>
           ) : (
@@ -73,33 +63,33 @@ export const LandingPage: React.FC = () => {
         <div style={styles.heroSection}>
           <div style={styles.leftPanel}>
             <h1 style={styles.title}>ExpoGarden</h1>
-            <p style={styles.subtitle}>메타버스 전시회 플랫폼</p>
+            <p style={styles.subtitle}>메타버스 쇼룸 플랫폼</p>
             <p style={styles.description}>
-              메타버스에서 전시회를 개최하고 관람할 수 있는 플랫폼 'ExpoGarden'.
+              당신의 작품을 메타버스 공간에 전시하세요.
             </p>
             <p style={styles.description}>
-              물리적 공간의 제약 없이 전 세계 어디서나 참가 신청, 부스 운영, 전시 관람이 가능합니다. 2D 메타버스 공간에서 실제 전시회와 유사한 경험을 제공합니다.
+              포트폴리오, 작품 갤러리, 프로젝트 쇼케이스를 3분 만에 만들고, 2D 메타버스에서 방문자들이 직접 걸어다니며 관람할 수 있습니다.
             </p>
             <div style={styles.features}>
               <div style={styles.feature}>
-                <span style={styles.featureIcon}>📋</span>
+                <span style={styles.featureIcon}>✨</span>
                 <div>
-                  <h3 style={styles.featureTitle}>참가 신청 및 부스 운영</h3>
-                  <p style={styles.featureText}>온라인으로 참가 신청하고, 승인된 부스에서 제품과 서비스를 전시하세요</p>
+                  <h3 style={styles.featureTitle}>3분 만에 쇼룸 만들기</h3>
+                  <p style={styles.featureText}>복잡한 설정 없이 사진과 영상만 올리면 나만의 메타버스 쇼룸이 완성됩니다</p>
                 </div>
               </div>
               <div style={styles.feature}>
-                <span style={styles.featureIcon}>🗺️</span>
+                <span style={styles.featureIcon}>🚶</span>
                 <div>
-                  <h3 style={styles.featureTitle}>부스 배치도 및 메타버스 탐방</h3>
-                  <p style={styles.featureText}>전시 홀의 부스 배치도를 확인하고, 캐릭터로 걸어다니며 각 부스를 방문하세요</p>
+                  <h3 style={styles.featureTitle}>캐릭터로 걸어다니며 관람</h3>
+                  <p style={styles.featureText}>2D 탑다운 메타버스에서 캐릭터를 조작하며 다른 사람의 쇼룸을 방문하세요</p>
                 </div>
               </div>
               <div style={styles.feature}>
-                <span style={styles.featureIcon}>💼</span>
+                <span style={styles.featureIcon}>💬</span>
                 <div>
-                  <h3 style={styles.featureTitle}>비즈니스 상담 및 네트워킹</h3>
-                  <p style={styles.featureText}>실시간 채팅으로 구매상담, 수출상담, 투자설명회 등 비즈니스 활동을 진행하세요</p>
+                  <h3 style={styles.featureTitle}>실시간 소통</h3>
+                  <p style={styles.featureText}>방문자와 실시간 채팅하고, 방명록과 질문을 통해 피드백을 받으세요</p>
                 </div>
               </div>
             </div>
@@ -114,15 +104,21 @@ export const LandingPage: React.FC = () => {
                 
                 <div style={styles.actionButtons}>
                   <button onClick={() => navigate('/my/booths')} style={styles.actionCard}>
-                    <span style={styles.actionIcon}>📋</span>
-                    <h3 style={styles.actionTitle}>내 부스 관리</h3>
-                    <p style={styles.actionDesc}>운영 중인 부스를 관리하세요</p>
+                    <span style={styles.actionIcon}>🎨</span>
+                    <h3 style={styles.actionTitle}>내 쇼룸 관리</h3>
+                    <p style={styles.actionDesc}>내가 만든 쇼룸을 관리하세요</p>
                   </button>
                   
                   <button onClick={() => navigate('/my/booths/new')} style={styles.actionCard}>
-                    <span style={styles.actionIcon}>➕</span>
-                    <h3 style={styles.actionTitle}>부스 신청하기</h3>
-                    <p style={styles.actionDesc}>새로운 부스를 만들어보세요</p>
+                    <span style={styles.actionIcon}>✨</span>
+                    <h3 style={styles.actionTitle}>쇼룸 만들기</h3>
+                    <p style={styles.actionDesc}>3분 만에 쇼룸 완성!</p>
+                  </button>
+                  
+                  <button onClick={() => navigate('/booths')} style={styles.actionCard}>
+                    <span style={styles.actionIcon}>🖼️</span>
+                    <h3 style={styles.actionTitle}>쇼룸 갤러리</h3>
+                    <p style={styles.actionDesc}>다른 사람들의 쇼룸 구경</p>
                   </button>
                   
                   <button onClick={handleEnterMetaverse} style={styles.actionCard}>
@@ -150,10 +146,13 @@ export const LandingPage: React.FC = () => {
                     <p style={styles.previewText}>2D 메타버스로 구현된 전시 공간</p>
                   </div>
                 </div>
+                <button onClick={() => navigate('/booths')} style={styles.browseBoothsBtn}>
+                  🖼️ 쇼룸 갤러리 구경하기
+                </button>
                 <button onClick={handleEnterMetaverse} style={styles.enterBtn}>
                   메타버스 입장하기 👉
                 </button>
-                <p style={styles.loginHint}>※ 로그인이 필요합니다</p>
+                <p style={styles.loginHint}>※ 메타버스 입장은 로그인이 필요합니다</p>
               </div>
             )}
           </div>
@@ -161,27 +160,27 @@ export const LandingPage: React.FC = () => {
 
         {/* 왜 사용해야 하는가 섹션 */}
         <section id="features" style={styles.whySection}>
-          <h2 style={styles.whyTitle}>왜 ExpoGarden을 사용해야 할까요?</h2>
+          <h2 style={styles.whyTitle}>누가 ExpoGarden을 사용하나요?</h2>
           <div style={styles.benefitsGrid}>
             <div style={styles.benefitCard}>
-              <div style={styles.benefitIcon}>🌍</div>
-              <h3 style={styles.benefitTitle}>물리적 제약 없는 전시회</h3>
+              <div style={styles.benefitIcon}>🎨</div>
+              <h3 style={styles.benefitTitle}>디자이너 & 아티스트</h3>
               <p style={styles.benefitText}>
-                실제 전시장을 방문하지 않아도 전 세계 어디서나 참가하고 관람할 수 있습니다. 비용과 시간을 절약하면서도 동일한 경험을 제공합니다.
+                포트폴리오를 메타버스 공간에 전시하세요. 평범한 이미지 나열이 아닌, 방문자가 직접 걸어다니며 감상하는 특별한 경험을 제공합니다.
               </p>
             </div>
             <div style={styles.benefitCard}>
-              <div style={styles.benefitIcon}>📊</div>
-              <h3 style={styles.benefitTitle}>실시간 통계 및 관리</h3>
+              <div style={styles.benefitIcon}>🎓</div>
+              <h3 style={styles.benefitTitle}>학생 & 졸업전시</h3>
               <p style={styles.benefitText}>
-                부스 방문자 수, 상담 건수, 관심도 등 실시간 통계를 확인하고, 관리자 대시보드를 통해 전시회를 효율적으로 운영할 수 있습니다.
+                졸업 작품, 프로젝트 결과물을 온라인 전시회로 만드세요. 코로나 시대에도 안전하게, 전 세계 누구나 관람할 수 있습니다.
               </p>
             </div>
             <div style={styles.benefitCard}>
-              <div style={styles.benefitIcon}>🎪</div>
-              <h3 style={styles.benefitTitle}>부대행사 및 컨퍼런스</h3>
+              <div style={styles.benefitIcon}>📸</div>
+              <h3 style={styles.benefitTitle}>창작자 & 크리에이터</h3>
               <p style={styles.benefitText}>
-                이노베이션 어워즈, 네트워킹 파티, 컨퍼런스 등 다양한 부대행사를 메타버스 안에서 함께 진행할 수 있습니다.
+                사진, 일러스트, 게임, 음악 등 모든 창작물을 전시할 수 있습니다. 소규모 굿즈샵이나 작품 판매도 가능합니다.
               </p>
             </div>
           </div>
@@ -239,6 +238,15 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#666',
     textDecoration: 'none',
     fontWeight: '500',
+  },
+  navLinkButton: {
+    fontSize: '16px',
+    color: '#666',
+    fontWeight: '500',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
   },
   navButton: {
     padding: '8px 16px',
@@ -384,6 +392,19 @@ const styles: Record<string, React.CSSProperties> = {
   previewText: {
     fontSize: '16px',
     color: '#666',
+  },
+  browseBoothsBtn: {
+    width: '100%',
+    padding: '14px',
+    backgroundColor: '#fff',
+    color: '#5b4cdb',
+    border: '2px solid #5b4cdb',
+    borderRadius: '12px',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    marginBottom: '12px',
+    transition: 'all 0.3s ease',
   },
   enterBtn: {
     width: '100%',

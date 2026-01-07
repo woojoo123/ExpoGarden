@@ -31,6 +31,9 @@ export const LoginPage: React.FC = () => {
       
       if (returnTo === 'metaverse') {
         navigate('/character-selection');
+      } else if (returnTo && returnTo.startsWith('showroom/')) {
+        // 쇼룸 상세 페이지로 돌아가기
+        navigate(`/${returnTo}`);
       } else {
         navigate('/');
       }

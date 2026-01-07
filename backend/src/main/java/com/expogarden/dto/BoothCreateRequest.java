@@ -10,10 +10,9 @@ import java.util.Map;
 
 @Data
 public class BoothCreateRequest {
-    @NotNull
+    // 개인 쇼룸 플랫폼: 전시/홀은 자동 할당되므로 선택사항
     private Long exhibitionId;
     
-    @NotNull
     private Long hallId;
     
     @NotBlank

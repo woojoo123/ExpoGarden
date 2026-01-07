@@ -43,7 +43,7 @@ export const SignupPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await apiClient.signup(email, password, nickname, 'VISITOR');
+      await apiClient.signup(email, password, nickname, 'EXHIBITOR');
       setSuccess(true);
       
       // 2초 후 로그인 페이지로 이동

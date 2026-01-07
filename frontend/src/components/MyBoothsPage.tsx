@@ -68,22 +68,23 @@ export const MyBoothsPage: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1>내 부스 관리</h1>
+        <h1>내 쇼룸 관리</h1>
         <div>
           <button onClick={() => navigate('/')} style={styles.backBtn}>
-            ← 전시장으로
+            ← 메인으로
           </button>
           <button onClick={() => navigate('/my/booths/new')} style={styles.createBtn}>
-            + 새 부스 등록
+            ✨ 새 쇼룸 만들기
           </button>
         </div>
       </div>
 
       {booths.length === 0 ? (
         <div style={styles.empty}>
-          <p>등록된 부스가 없습니다.</p>
+          <p style={styles.emptyTitle}>아직 만든 쇼룸이 없습니다.</p>
+          <p style={styles.emptySubtext}>3분 만에 나만의 메타버스 쇼룸을 만들어보세요!</p>
           <button onClick={() => navigate('/my/booths/new')} style={styles.emptyBtn}>
-            첫 부스 등록하기
+            ✨ 첫 쇼룸 만들기
           </button>
         </div>
       ) : (
@@ -103,17 +104,23 @@ export const MyBoothsPage: React.FC = () => {
                 <p style={styles.cardSummary}>{booth.summary}</p>
                 <div style={styles.cardFooter}>
                   <button
+                    onClick={() => navigate(`/showroom/${booth.id}`)}
+                    style={styles.viewBtn}
+                  >
+                    👁️ 보기
+                  </button>
+                  <button
                     onClick={() => navigate(`/my/booths/${booth.id}/edit`)}
                     style={styles.editBtn}
                   >
-                    수정
+                    ✏️ 수정
                   </button>
                   {booth.status === 'DRAFT' && (
                     <button
                       onClick={() => handleSubmit(booth.id)}
                       style={styles.submitBtn}
                     >
-                      제출
+                      ✨ 공개하기
                     </button>
                   )}
                 </div>
@@ -126,7 +133,7 @@ export const MyBoothsPage: React.FC = () => {
   );
 
   async function handleSubmit(boothId: number) {
-    if (!confirm('이 부스를 승인 요청하시겠습니까?')) return;
+    if (!confirm('이 쇼룸을 공개하시겠습니까?')) return;
 
     try {
       await fetch(`/api/booths/${boothId}/submit`, {
@@ -135,10 +142,10 @@ export const MyBoothsPage: React.FC = () => {
           'Authorization': `Bearer ${localStorage.getItem('tokens') ? JSON.parse(localStorage.getItem('tokens')!).accessToken : ''}`,
         },
       });
-      alert('제출되었습니다!');
+      alert('쇼룸이 공개되었습니다!');
       loadMyBooths();
     } catch (error) {
-      alert('제출 실패');
+      alert('공개 실패');
     }
   }
 };
@@ -185,6 +192,17 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '60px',
     backgroundColor: '#fff',
     borderRadius: '8px',
+  },
+  emptyTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: '8px',
+  },
+  emptySubtext: {
+    fontSize: '14px',
+    color: '#666',
+    marginBottom: '20px',
   },
   emptyBtn: {
     marginTop: '20px',
@@ -242,6 +260,16 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '8px',
   },
+  viewBtn: {
+    flex: 1,
+    padding: '8px',
+    backgroundColor: '#5b4cdb',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '13px',
+  },
   editBtn: {
     flex: 1,
     padding: '8px',
@@ -250,6 +278,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
+    fontSize: '13px',
   },
   submitBtn: {
     flex: 1,
