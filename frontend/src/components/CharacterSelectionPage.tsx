@@ -1,22 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
-import {
-  type AvatarConfig,
-  type Gender,
-  DEFAULT_AVATAR_CONFIG,
-  SKIN_TONES,
-  HAIR_COLORS,
-  TOP_COLORS,
-  BOTTOM_COLORS,
-  HAIR_STYLES,
-  SKIN_TONE_NAMES,
-  HAIR_COLOR_NAMES,
-  TOP_COLOR_NAMES,
-  BOTTOM_COLOR_NAMES,
-  avatarConfigToString,
-} from '@/constants/characters';
+
+const TOTAL_CHARACTERS = 10; // 총 10명의 캐릭터
+const CHARACTER_SIZE = 64; // 고정 크기: 64x64
+
+/**
+ * 캐릭터의 idle down 프레임 위치 계산
+ * @param charIndex 캐릭터 인덱스 (0-9)
+ * @returns CSS background-position 값
+ */
+function getIdleDownPosition(charIndex: number): string {
+  // 블록 위치 계산
+  const blockX = charIndex % 2; // 가로 2명
+  const blockY = Math.floor(charIndex / 2); // 세로 5명
+  
+  // 기본 컬럼/행
+  const baseCol = blockX * 4; // 각 캐릭터는 가로 4칸
+  const baseRow = blockY * 3; // 각 캐릭터는 세로 3칸
+  
+  // idle down 프레임: col = baseCol + 1 (down 방향), row = baseRow (첫 번째 걷기 프레임)
+  const col = baseCol + 1;
+  const row = baseRow; // 첫 번째 걷기 프레임이 idle 상태
+  
+  // CSS background-position 계산 (음수 값)
+  const x = -col * CHARACTER_SIZE;
+  const y = -row * CHARACTER_SIZE;
+  
+  return `${x}px ${y}px`;
+}
 
 export const CharacterSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,8 +37,11 @@ export const CharacterSelectionPage: React.FC = () => {
   const user = useStore((state) => state.user);
   const [loading, setLoading] = useState(false);
   
-  // 아바타 커스터마이징 상태
-  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(DEFAULT_AVATAR_CONFIG);
+  // 선택된 캐릭터 인덱스
+  const [selectedCharIndex, setSelectedCharIndex] = useState<number>(() => {
+    const saved = localStorage.getItem('selectedCharIndex');
+    return saved ? parseInt(saved, 10) : 0;
+  });
 
   // 사용자 정보 확인
   React.useEffect(() => {
@@ -41,12 +57,13 @@ export const CharacterSelectionPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const handleGenderChange = (gender: Gender) => {
-    setAvatarConfig({ ...avatarConfig, gender });
-  };
+  // 선택 저장
+  useEffect(() => {
+    localStorage.setItem('selectedCharIndex', selectedCharIndex.toString());
+  }, [selectedCharIndex]);
 
-  const handleHairStyleChange = (hairStyle: string) => {
-    setAvatarConfig({ ...avatarConfig, hairStyle });
+  const handleCharacterSelect = (charIndex: number) => {
+    setSelectedCharIndex(charIndex);
   };
 
   const handleConfirm = async () => {
@@ -58,11 +75,15 @@ export const CharacterSelectionPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // AvatarConfig를 JSON 문자열로 변환하여 저장
-      const configString = avatarConfigToString(avatarConfig);
-      const response = await apiClient.selectCharacter(configString);
+      // 선택된 캐릭터 정보를 JSON으로 저장: { charIndex, size: 'Character64x64' }
+      const characterData = JSON.stringify({
+        charIndex: selectedCharIndex,
+        size: 'Character64x64',
+      });
+      
+      const response = await apiClient.selectCharacter(characterData);
       setUser(response.data);
-      alert('캐릭터를 생성했습니다! 메타버스로 입장합니다.');
+      alert('캐릭터를 선택했습니다! 메타버스로 입장합니다.');
       navigate('/metaverse');
     } catch (error: any) {
       console.error('Failed to select character:', error);
@@ -118,150 +139,63 @@ export const CharacterSelectionPage: React.FC = () => {
 
       <div style={styles.rightPanel}>
         <div style={styles.header}>
-          <h2 style={styles.title}>캐릭터 커스터마이징</h2>
-          <p style={styles.subtitle}>나만의 아바타를 만들어보세요</p>
+          <h2 style={styles.title}>캐릭터 선택</h2>
+          <p style={styles.subtitle}>사용할 캐릭터를 선택해주세요</p>
         </div>
 
-        <div style={styles.customizationContainer}>
-          {/* 프리뷰 영역 */}
-          <div style={styles.previewSection}>
-            <div style={styles.previewBox}>
-              <div style={styles.previewPlaceholder}>
-                👤
-              </div>
-              <p style={styles.previewText}>미리보기</p>
-              <p style={styles.previewSubtext}>(실제 리소스 적용 시 표시됩니다)</p>
-            </div>
-          </div>
-
-          {/* 커스터마이징 옵션 */}
-          <div style={styles.optionsSection}>
-            {/* 성별 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>성별</h3>
-              <div style={styles.buttonGroup}>
-                <button
-                  onClick={() => handleGenderChange('male')}
+        <div style={styles.characterSelectionContainer}>
+          {/* 단일 캐릭터 표시 및 좌우 화살표 */}
+          <div style={styles.characterDisplaySection}>
+            <p style={styles.instructionText}>사용할 캐릭터를 클릭해주세요!</p>
+            <div style={styles.characterDisplayContainer}>
+              <button
+                onClick={() => {
+                  const prevIndex = selectedCharIndex > 0 ? selectedCharIndex - 1 : TOTAL_CHARACTERS - 1;
+                  handleCharacterSelect(prevIndex);
+                }}
+                style={{
+                  ...styles.navButton,
+                  ...(loading ? styles.navButtonDisabled : {}),
+                }}
+                disabled={loading}
+              >
+                ‹
+              </button>
+              
+              <div
+                onClick={() => handleCharacterSelect(selectedCharIndex)}
+                style={styles.characterDisplay}
+              >
+                <div
                   style={{
-                    ...styles.optionButton,
-                    ...(avatarConfig.gender === 'male' ? styles.activeButton : {}),
+                    ...styles.characterSprite,
+                    backgroundImage: `url(/assets/characters/Character64x64.png)`,
+                    backgroundPosition: getIdleDownPosition(selectedCharIndex),
+                    backgroundSize: `${CHARACTER_SIZE * 8}px ${CHARACTER_SIZE * 15}px`, // 전체 스프라이트 시트 크기 (512px x 960px)
+                    backgroundRepeat: 'no-repeat',
+                    width: `${CHARACTER_SIZE * 3}px`, // 한 프레임 크기의 3배 (192px) - 한 캐릭터만 크게 보이도록
+                    height: `${CHARACTER_SIZE * 3}px`, // 한 프레임 크기의 3배 (192px)
+                    imageRendering: 'pixelated' as const,
+                    overflow: 'hidden', // 한 프레임만 보이도록
                   }}
-                  disabled={loading}
-                >
-                  남성
-                </button>
-                <button
-                  onClick={() => handleGenderChange('female')}
-                  style={{
-                    ...styles.optionButton,
-                    ...(avatarConfig.gender === 'female' ? styles.activeButton : {}),
-                  }}
-                  disabled={loading}
-                >
-                  여성
-                </button>
+                />
               </div>
+              
+              <button
+                onClick={() => {
+                  const nextIndex = selectedCharIndex < TOTAL_CHARACTERS - 1 ? selectedCharIndex + 1 : 0;
+                  handleCharacterSelect(nextIndex);
+                }}
+                style={{
+                  ...styles.navButton,
+                  ...(loading ? styles.navButtonDisabled : {}),
+                }}
+                disabled={loading}
+              >
+                ›
+              </button>
             </div>
-
-            {/* 헤어스타일 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>헤어스타일</h3>
-              <div style={styles.buttonGroup}>
-                {HAIR_STYLES.map((style, index) => (
-                  <button
-                    key={style}
-                    onClick={() => handleHairStyleChange(style)}
-                    style={{
-                      ...styles.optionButton,
-                      ...(avatarConfig.hairStyle === style ? styles.activeButton : {}),
-                    }}
-                    disabled={loading}
-                  >
-                    스타일 {index + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 피부톤 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>피부톤</h3>
-              <div style={styles.colorGroup}>
-                {Object.entries(SKIN_TONES).map(([name, color]) => (
-                  <button
-                    key={name}
-                    onClick={() => setAvatarConfig({ ...avatarConfig, skinTone: color })}
-                    style={{
-                      ...styles.colorButton,
-                      backgroundColor: `#${color.toString(16)}`,
-                      ...(avatarConfig.skinTone === color ? styles.activeColorButton : {}),
-                    }}
-                    disabled={loading}
-                    title={SKIN_TONE_NAMES[color]}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 헤어 컬러 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>헤어 컬러</h3>
-              <div style={styles.colorGroup}>
-                {Object.entries(HAIR_COLORS).map(([name, color]) => (
-                  <button
-                    key={name}
-                    onClick={() => setAvatarConfig({ ...avatarConfig, hairColor: color })}
-                    style={{
-                      ...styles.colorButton,
-                      backgroundColor: `#${color.toString(16)}`,
-                      ...(avatarConfig.hairColor === color ? styles.activeColorButton : {}),
-                    }}
-                    disabled={loading}
-                    title={HAIR_COLOR_NAMES[color]}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 상의 컬러 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>상의 컬러</h3>
-              <div style={styles.colorGroup}>
-                {Object.entries(TOP_COLORS).map(([name, color]) => (
-                  <button
-                    key={name}
-                    onClick={() => setAvatarConfig({ ...avatarConfig, topColor: color })}
-                    style={{
-                      ...styles.colorButton,
-                      backgroundColor: `#${color.toString(16)}`,
-                      ...(avatarConfig.topColor === color ? styles.activeColorButton : {}),
-                    }}
-                    disabled={loading}
-                    title={TOP_COLOR_NAMES[color]}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 하의 컬러 선택 */}
-            <div style={styles.optionGroup}>
-              <h3 style={styles.optionTitle}>하의 컬러</h3>
-              <div style={styles.colorGroup}>
-                {Object.entries(BOTTOM_COLORS).map(([name, color]) => (
-                  <button
-                    key={name}
-                    onClick={() => setAvatarConfig({ ...avatarConfig, bottomColor: color })}
-                    style={{
-                      ...styles.colorButton,
-                      backgroundColor: `#${color.toString(16)}`,
-                      ...(avatarConfig.bottomColor === color ? styles.activeColorButton : {}),
-                    }}
-                    disabled={loading}
-                    title={BOTTOM_COLOR_NAMES[color]}
-                  />
-                ))}
-              </div>
-            </div>
+            <p style={styles.characterNumber}>캐릭터 {selectedCharIndex + 1} / {TOTAL_CHARACTERS}</p>
           </div>
         </div>
 
@@ -355,95 +289,82 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'rgba(255, 255, 255, 0.9)',
     marginTop: '10px',
   },
-  customizationContainer: {
+  characterSelectionContainer: {
     display: 'flex',
-    gap: '40px',
+    flexDirection: 'column',
+    gap: '30px',
     marginBottom: '30px',
-    maxWidth: '900px',
+    width: '100%',
+    maxWidth: '800px',
   },
-  previewSection: {
-    flex: '0 0 250px',
+  sectionTitle: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: '16px',
+    textAlign: 'center',
   },
-  previewBox: {
-    width: '250px',
-    height: '300px',
-    backgroundColor: '#fff',
-    borderRadius: '20px',
+  characterDisplaySection: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',
+    padding: '30px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
-    padding: '20px',
-  },
-  previewPlaceholder: {
-    fontSize: '80px',
-    marginBottom: '10px',
-  },
-  previewText: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: '#333',
-    margin: '10px 0 5px 0',
-  },
-  previewSubtext: {
-    fontSize: '12px',
-    color: '#999',
-    textAlign: 'center',
-  },
-  optionsSection: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
     gap: '20px',
   },
-  optionGroup: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: '12px',
-    padding: '15px 20px',
+  instructionText: {
+    fontSize: '18px',
+    color: '#fff',
+    fontWeight: '500',
+    textAlign: 'center',
+    margin: 0,
   },
-  optionTitle: {
-    fontSize: '16px',
+  characterDisplayContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '30px',
+    width: '100%',
+  },
+  navButton: {
+    width: '50px',
+    height: '50px',
+    fontSize: '32px',
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: '12px',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap',
-  },
-  optionButton: {
-    padding: '10px 20px',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#fff',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    border: '2px solid transparent',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
     borderRadius: '8px',
     cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  activeButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderColor: '#fff',
-  },
-  colorGroup: {
     display: 'flex',
-    gap: '10px',
-    flexWrap: 'wrap',
-  },
-  colorButton: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    border: '3px solid transparent',
-    cursor: 'pointer',
+    alignItems: 'center',
+    justifyContent: 'center',
     transition: 'all 0.2s ease',
   },
-  activeColorButton: {
-    borderColor: '#fff',
-    transform: 'scale(1.15)',
+  navButtonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  characterDisplay: {
+    cursor: 'pointer',
+    padding: '20px',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: '12px',
+    border: '3px solid rgba(255, 255, 255, 0.3)',
+    transition: 'all 0.2s ease',
+  },
+  characterSprite: {
+    overflow: 'hidden',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
+    borderRadius: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  characterNumber: {
+    fontSize: '16px',
+    color: '#fff',
+    fontWeight: '500',
+    margin: 0,
   },
   confirmButton: {
     padding: '18px 60px',

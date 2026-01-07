@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
 import type { Booth } from '@/types';
-import { stringToAvatarConfig, type AvatarConfig, type Direction } from '@/constants/characters';
-import { TopDownAvatar } from './TopDownAvatar';
+import type { Direction } from '@/constants/characters';
 
 export class MainScene extends Phaser.Scene {
-  private player!: TopDownAvatar; // Sprite에서 TopDownAvatar로 변경
+  private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: {
     W: Phaser.Input.Keyboard.Key;
@@ -17,7 +16,7 @@ export class MainScene extends Phaser.Scene {
   private nearbyBooth: Booth | null = null;
   private onBoothInteract?: (booth: Booth) => void;
   private interactionText!: Phaser.GameObjects.Text;
-  private avatarConfig!: AvatarConfig;
+  private selectedCharIndex: number = 0; // 선택된 캐릭터 인덱스 (0-9)
 
   constructor() {
     super({ key: 'MainScene' });
@@ -28,39 +27,52 @@ export class MainScene extends Phaser.Scene {
     onBoothInteract: (booth: Booth) => void; 
     selectedCharacter?: string; 
   }) {
-    this.booths = data.booths;
-    this.onBoothInteract = data.onBoothInteract;
+    console.log('[MainScene] init() 호출됨, 데이터:', {
+      boothsCount: data?.booths?.length || 0,
+      hasOnBoothInteract: !!data?.onBoothInteract,
+      hasSelectedCharacter: !!data?.selectedCharacter,
+    });
     
-    // selectedCharacter는 이제 JSON 문자열 형태의 AvatarConfig
-    this.avatarConfig = stringToAvatarConfig(data.selectedCharacter);
+    this.booths = data?.booths || [];
+    this.onBoothInteract = data?.onBoothInteract;
+    
+    // selectedCharacter는 JSON 문자열: { charIndex: number, size: 'Character64x64' }
+    // 크기는 항상 Character64x64로 고정
+    try {
+      if (data?.selectedCharacter) {
+        const charData = JSON.parse(data.selectedCharacter);
+        this.selectedCharIndex = charData.charIndex ?? 0;
+      } else {
+        this.selectedCharIndex = 0;
+      }
+    } catch {
+      this.selectedCharIndex = 0;
+    }
+    
+    console.log('[MainScene] 초기화 완료, 부스 개수:', this.booths.length, '캐릭터: Character64x64, 인덱스:', this.selectedCharIndex);
   }
 
   preload() {
-    // 파츠별 스프라이트 시트 로드 (48x48, 16프레임)
-    const frameConfig = { frameWidth: 48, frameHeight: 48 };
-
-    // Body (체형)
-    this.load.spritesheet('body_male', '/assets/characters/parts/body_male.png', frameConfig);
-    this.load.spritesheet('body_female', '/assets/characters/parts/body_female.png', frameConfig);
-
-    // Hair (헤어스타일)
-    this.load.spritesheet('hair_01', '/assets/characters/parts/hair_01.png', frameConfig);
-    this.load.spritesheet('hair_02', '/assets/characters/parts/hair_02.png', frameConfig);
-    this.load.spritesheet('hair_03', '/assets/characters/parts/hair_03.png', frameConfig);
-
-    // 상의/하의/신발
-    this.load.spritesheet('top_base', '/assets/characters/parts/top_base.png', frameConfig);
-    this.load.spritesheet('bottom_base', '/assets/characters/parts/bottom_base.png', frameConfig);
-    this.load.spritesheet('shoes_base', '/assets/characters/parts/shoes_base.png', frameConfig);
+    console.log('[MainScene] preload() 호출됨, 캐릭터: Character64x64');
+    
+    // 완성된 캐릭터 스프라이트 시트 로드 (항상 Character64x64 사용)
+    // Character64x64.png: 512x960 (64x64 프레임, 가로 8칸, 세로 15칸)
+    this.load.spritesheet(
+      'Character64x64',
+      '/assets/characters/Character64x64.png',
+      { frameWidth: 64, frameHeight: 64 }
+    );
   }
 
   create() {
-    // 배경 생성 (회색 바닥)
-    this.add.rectangle(0, 0, 3000, 2000, 0x303030).setOrigin(0, 0);
+    console.log('[MainScene] create() 호출됨, 부스 개수:', this.booths.length);
+    
+    // 배경 생성 (밝은 베이지/갈색 바닥)
+    this.add.rectangle(0, 0, 3000, 2000, 0xe8dcc0).setOrigin(0, 0);
 
-    // 그리드 라인 추가 (시각적 효과)
+    // 그리드 라인 추가 (부드러운 색상)
     const graphics = this.add.graphics();
-    graphics.lineStyle(1, 0x404040, 0.5);
+    graphics.lineStyle(1, 0xd4c5a9, 0.4);
     for (let x = 0; x < 3000; x += 50) {
       graphics.moveTo(x, 0);
       graphics.lineTo(x, 2000);
@@ -74,10 +86,21 @@ export class MainScene extends Phaser.Scene {
     // 애니메이션 생성
     this.createAnimations();
 
-    // 플레이어(아바타) 생성
-    this.player = new TopDownAvatar(this, 400, 300, this.avatarConfig);
+    // 플레이어(캐릭터) 생성 - 중앙에서 시작
+    // 선택된 캐릭터의 idle down 프레임으로 시작
+    const blockX = this.selectedCharIndex % 2;
+    const blockY = Math.floor(this.selectedCharIndex / 2);
+    const baseCol = blockX * 4;
+    const baseRow = blockY * 3;
+    const idleDownCol = baseCol + 1; // down 방향
+    const idleDownRow = baseRow; // 첫 번째 걷기 프레임이 idle 상태
+    const startFrame = idleDownRow * 8 + idleDownCol;
+    
+    this.player = this.physics.add.sprite(1500, 1000, 'Character64x64', startFrame);
     this.player.setDepth(10);
-    this.player.setScale(2); // 48x48을 2배 확대 (96x96)
+    
+    // 캐릭터 크기 조정 (64x64 기준 1.5배)
+    this.player.setScale(1.5);
 
     // 부스 생성
     this.createBooths();
@@ -100,8 +123,8 @@ export class MainScene extends Phaser.Scene {
 
     // 카메라 설정
     this.cameras.main.setBounds(0, 0, 3000, 2000);
-    this.cameras.main.startFollow(this.player.container, true, 0.1, 0.1);
-    this.cameras.main.setZoom(1.5);
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.setZoom(1.2); // 줌을 약간 줄여서 더 넓은 화면 보기
 
     // 상호작용 텍스트
     this.interactionText = this.add.text(0, 0, '', {
@@ -119,34 +142,53 @@ export class MainScene extends Phaser.Scene {
   }
 
   private createAnimations() {
-    // 파츠 레이어 시스템에서는 body에만 애니메이션을 정의하고,
-    // 나머지 파츠는 프레임 동기화로 처리합니다.
+    // 완성된 캐릭터 스프라이트 시트 애니메이션 생성
+    // 스프라이트 시트 구조: 가로 8칸, 세로 15칸
+    // 각 캐릭터: 가로 4칸(방향) x 세로 3칸(걷기 프레임) = 12프레임
+    // 방향 순서: left=0, down=1, up=2, right=3
+    // 걷기 프레임: 0..2 (3프레임)
     
-    const genders = ['male', 'female'] as const;
+    // 선택된 캐릭터의 블록 위치 계산
+    const blockX = this.selectedCharIndex % 2; // 가로 2명
+    const blockY = Math.floor(this.selectedCharIndex / 2); // 세로 5명
+    const baseCol = blockX * 4; // 각 캐릭터는 가로 4칸
+    const baseRow = blockY * 3; // 각 캐릭터는 세로 3칸
+    
+    // 방향별 컬럼 오프셋
+    const dirColOffset = {
+      left: 0,
+      down: 1,
+      up: 2,
+      right: 3,
+    };
+    
+    // 각 방향의 걷기 애니메이션 생성 (3프레임: 0, 1, 2)
     const directions: Direction[] = ['down', 'left', 'right', 'up'];
-    const dirRowStart = { down: 0, left: 4, right: 8, up: 12 };
-
-    genders.forEach((gender) => {
-      const bodyKey = `body_${gender}`;
+    directions.forEach((dir) => {
+      const col = baseCol + dirColOffset[dir];
+      const frames: number[] = [];
       
-      directions.forEach((dir) => {
-        const start = dirRowStart[dir];
-        
-        // Walk 애니메이션
-        this.anims.create({
-          key: `walk_${dir}_${gender}`,
-          frames: this.anims.generateFrameNumbers(bodyKey, { 
-            start, 
-            end: start + 3 
-          }),
-          frameRate: 8,
-          repeat: -1,
-        });
+      // 걷기 프레임 3개 (row 0, 1, 2)
+      for (let walkFrame = 0; walkFrame < 3; walkFrame++) {
+        const row = baseRow + walkFrame;
+        const frameIndex = row * 8 + col; // 가로 8칸
+        frames.push(frameIndex);
+      }
+      
+      this.anims.create({
+        key: `Character64x64-walk-${dir}`,
+        frames: frames.map(frame => ({ key: 'Character64x64', frame })),
+        frameRate: 10,
+        repeat: -1,
       });
     });
+    
+    console.log('[MainScene] 애니메이션 생성 완료: Character64x64, 캐릭터 인덱스:', this.selectedCharIndex);
   }
 
   private createBooths() {
+    console.log('[MainScene] createBooths() 호출됨, 부스 개수:', this.booths.length);
+    
     // 부스별 색상 매핑
     const categoryColors: Record<string, number> = {
       '아트/디자인': 0xef4444,
@@ -160,57 +202,67 @@ export class MainScene extends Phaser.Scene {
       '기타': 0x6b7280,
     };
 
-    // 부스 배치 (그리드 형태)
-    const startX = 150;
-    const startY = 150;
-    const cols = 5;
-    const spacing = 200;
+    // 부스 배치 (양쪽에 줄지어 배치)
+    const leftStartX = 200; // 왼쪽 시작 X
+    const rightStartX = 2800; // 오른쪽 시작 X
+    const startY = 200; // 시작 Y
+    const spacingY = 180; // Y 간격
+    const boothsPerSide = Math.ceil(this.booths.length / 2); // 한쪽당 부스 개수
 
     this.booths.forEach((booth, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      const x = startX + col * spacing;
-      const y = startY + row * spacing;
+      // 왼쪽 또는 오른쪽 결정
+      const isLeft = index < boothsPerSide;
+      const sideIndex = isLeft ? index : index - boothsPerSide;
+      
+      const x = isLeft ? leftStartX : rightStartX;
+      const y = startY + sideIndex * spacingY;
 
-      // 부스 그래픽 생성
+      // 부스 그래픽 생성 (더 크게)
       const graphics = this.add.graphics();
       const color = categoryColors[booth.category] || 0x6b7280;
       
-      // 부스 박스
+      // 부스 박스 (더 크게: 140x100)
       graphics.fillStyle(color, 1);
-      graphics.fillRoundedRect(-60, -40, 120, 80, 8);
+      graphics.fillRoundedRect(-70, -50, 140, 100, 10);
       
-      // 테두리
-      graphics.lineStyle(3, 0xffffff, 0.8);
-      graphics.strokeRoundedRect(-60, -40, 120, 80, 8);
+      // 테두리 (더 두껍게)
+      graphics.lineStyle(4, 0xffffff, 0.9);
+      graphics.strokeRoundedRect(-70, -50, 140, 100, 10);
       
-      graphics.generateTexture(`booth_${booth.id}`, 120, 80);
+      graphics.generateTexture(`booth_${booth.id}`, 140, 100);
       graphics.destroy();
 
       // 부스 스프라이트 생성
       const boothSprite = this.physics.add.sprite(x, y, `booth_${booth.id}`);
       boothSprite.setImmovable(true);
       boothSprite.setData('booth', booth);
+      boothSprite.setDepth(5); // 플레이어보다 낮지만 배경보다 높게
       
       this.boothSprites.push(boothSprite);
 
-      // 부스 이름 텍스트
-      const nameText = this.add.text(x, y - 60, booth.title, {
-        fontSize: '12px',
+      // 부스 이름 텍스트 (더 크게)
+      const nameText = this.add.text(x, y - 70, booth.title, {
+        fontSize: '14px',
         color: '#ffffff',
         backgroundColor: '#000000',
-        padding: { x: 6, y: 3 },
+        padding: { x: 8, y: 4 },
+        stroke: '#000000',
+        strokeThickness: 2,
       });
       nameText.setOrigin(0.5);
+      nameText.setDepth(6); // 부스 위에 표시
 
-      // 카테고리 뱃지
-      const categoryText = this.add.text(x, y + 50, booth.category, {
-        fontSize: '10px',
+      // 카테고리 뱃지 (더 크게)
+      const categoryText = this.add.text(x, y + 60, booth.category, {
+        fontSize: '12px',
         color: '#ffffff',
         backgroundColor: `#${color.toString(16)}`,
-        padding: { x: 4, y: 2 },
+        padding: { x: 6, y: 3 },
+        stroke: '#000000',
+        strokeThickness: 1,
       });
       categoryText.setOrigin(0.5);
+      categoryText.setDepth(6); // 부스 위에 표시
     });
   }
 
@@ -239,16 +291,15 @@ export class MainScene extends Phaser.Scene {
       velocityY *= factor;
     }
 
-    // Container는 물리 바디가 없으므로 수동 이동
-    const delta = this.game.loop.delta / 1000; // 초 단위 변환
-    const pos = this.player.getPosition();
-    const newX = pos.x + velocityX * delta;
-    const newY = pos.y + velocityY * delta;
+    // 물리 바디로 이동
+    this.player.setVelocity(velocityX, velocityY);
     
     // 월드 경계 체크
-    const clampedX = Phaser.Math.Clamp(newX, 0, 3000);
-    const clampedY = Phaser.Math.Clamp(newY, 0, 2000);
-    this.player.setPosition(clampedX, clampedY);
+    const clampedX = Phaser.Math.Clamp(this.player.x, 0, 3000);
+    const clampedY = Phaser.Math.Clamp(this.player.y, 0, 2000);
+    if (clampedX !== this.player.x || clampedY !== this.player.y) {
+      this.player.setPosition(clampedX, clampedY);
+    }
 
     // 애니메이션 업데이트
     this.updatePlayerAnimation(velocityX, velocityY);
@@ -268,34 +319,29 @@ export class MainScene extends Phaser.Scene {
 
   private updatePlayerAnimation(velocityX: number, velocityY: number) {
     if (velocityX === 0 && velocityY === 0) {
-      // 정지 - 마지막 방향 유지
-      const currentAnimKey = this.player.getCurrentAnimKey();
-      if (currentAnimKey && currentAnimKey.startsWith('walk_')) {
-        const parts = currentAnimKey.split('_');
-        const direction = parts[1] as Direction;
-        this.player.stopWalk(direction);
-      } else if (!currentAnimKey) {
-        // 초기 상태
-        this.player.stopWalk('down');
-      }
+      // 정지 - 애니메이션 정지
+      this.player.anims.stop();
+      return;
+    }
+
+    // 이동 중 - 방향에 따라 애니메이션 재생
+    let direction: Direction;
+    if (Math.abs(velocityY) > Math.abs(velocityX)) {
+      direction = velocityY > 0 ? 'down' : 'up';
     } else {
-      // 이동 - 방향 우선순위: 상하 > 좌우
-      let direction: Direction;
-      
-      if (Math.abs(velocityY) > Math.abs(velocityX)) {
-        direction = velocityY < 0 ? 'up' : 'down';
-      } else {
-        direction = velocityX < 0 ? 'left' : 'right';
-      }
-      
-      this.player.playWalk(direction);
+      direction = velocityX > 0 ? 'right' : 'left';
+    }
+
+    const animKey = `Character64x64-walk-${direction}`;
+    if (!this.player.anims.isPlaying || this.player.anims.currentAnim?.key !== animKey) {
+      this.player.anims.play(animKey, true);
     }
   }
 
   private checkNearbyBooths() {
     const interactionDistance = 80;
     let foundBooth: Booth | null = null;
-    const pos = this.player.getPosition();
+    const pos = { x: this.player.x, y: this.player.y };
 
     for (const boothSprite of this.boothSprites) {
       const distance = Phaser.Math.Distance.Between(

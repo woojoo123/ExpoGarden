@@ -80,26 +80,61 @@ export const ExhibitionViewPhaser: React.FC = () => {
     const hall = halls.find((h) => h.id === hallId);
     if (hall && currentExhibition) {
       setCurrentHall(hall);
-      loadBooths(currentExhibition.id, hallId);
       
       // 게임 재시작
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;
       }
+
+      // 부스 로드 (로드 후 useEffect에서 게임이 자동으로 재시작됨)
+      loadBooths(currentExhibition.id, hallId);
     }
   };
 
   // Phaser 게임 초기화
   useEffect(() => {
-    if (!containerRef.current || booths.length === 0 || gameRef.current) return;
+    if (!containerRef.current || booths.length === 0) {
+      console.log('[ExhibitionViewPhaser] 게임 초기화 조건 불만족:', {
+        hasContainer: !!containerRef.current,
+        boothsCount: booths.length,
+      });
+      return;
+    }
+    
+    // 게임이 이미 있으면 씬 상태 확인
+    if (gameRef.current) {
+      const scene = gameRef.current.scene.getScene('MainScene');
+      // 씬이 실행 중이면 재시작 (홀 변경 등)
+      if (scene && scene.scene.isActive()) {
+        console.log('[ExhibitionViewPhaser] 씬이 이미 실행 중입니다. 재시작...');
+        scene.scene.restart({
+          booths: booths,
+          onBoothInteract: handleBoothClick,
+          selectedCharacter: user?.selectedCharacter,
+        });
+      } else if (!scene) {
+        // 씬이 없으면 추가하고 시작
+        console.log('[ExhibitionViewPhaser] 씬이 없습니다. 추가하고 시작...');
+        gameRef.current.scene.add('MainScene', MainScene);
+        gameRef.current.scene.start('MainScene', {
+          booths: booths,
+          onBoothInteract: handleBoothClick,
+          selectedCharacter: user?.selectedCharacter,
+        });
+      }
+      // 씬이 있지만 아직 시작되지 않았으면 기다림 (preload 중일 수 있음)
+      return;
+    }
+
+    console.log('[ExhibitionViewPhaser] 새 게임 초기화 시작, 부스 개수:', booths.length);
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: containerRef.current,
       width: window.innerWidth,
       height: window.innerHeight - 120, // 헤더 공간 제외
-      backgroundColor: '#2d2d2d',
+      backgroundColor: '#e8dcc0', // 밝은 베이지 배경
       physics: {
         default: 'arcade',
         arcade: {
@@ -107,17 +142,22 @@ export const ExhibitionViewPhaser: React.FC = () => {
           debug: false,
         },
       },
-      scene: MainScene,
+      // scene을 여기서 제거하고 수동으로 추가
     };
 
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
-    // 씬에 데이터 전달
+    console.log('[ExhibitionViewPhaser] Phaser 게임 생성 완료, 씬 시작...');
+
+    // MainScene을 수동으로 추가
+    game.scene.add('MainScene', MainScene);
+    
+    // 데이터와 함께 씬 시작
     game.scene.start('MainScene', {
       booths: booths,
       onBoothInteract: handleBoothClick,
-      selectedCharacter: user?.selectedCharacter, // JSON 문자열 형태의 AvatarConfig
+      selectedCharacter: user?.selectedCharacter,
     });
 
     // 윈도우 리사이즈 핸들링
@@ -130,11 +170,10 @@ export const ExhibitionViewPhaser: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (game) {
-        game.destroy(true);
-      }
+      // 게임은 컴포넌트 언마운트 시에만 destroy
+      // (홀 변경 시에는 handleHallChange에서 처리)
     };
-  }, [booths]);
+  }, [booths.length, user?.selectedCharacter]); // booths.length만 의존성으로 사용하여 배열 참조 변경 무시
 
   // 캐릭터 변경 감지 및 씬 재시작
   useEffect(() => {
@@ -246,12 +285,13 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#1a1a1a',
   },
   header: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: '#ffffff',
     padding: '16px 24px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottom: '2px solid #404040',
+    borderBottom: '2px solid #d4c5a9',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
     zIndex: 10,
   },
   headerLeft: {
@@ -266,12 +306,12 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: '24px',
     fontWeight: 700,
-    color: '#ffffff',
+    color: '#333333',
   },
   subtitle: {
     margin: '4px 0 0 0',
     fontSize: '13px',
-    color: '#9ca3af',
+    color: '#666666',
   },
   hallSelector: {
     display: 'flex',
@@ -281,21 +321,21 @@ const styles: Record<string, React.CSSProperties> = {
   label: {
     fontSize: '14px',
     fontWeight: 500,
-    color: '#e5e7eb',
+    color: '#333333',
   },
   select: {
     padding: '8px 12px',
-    border: '1px solid #404040',
+    border: '1px solid #d4c5a9',
     borderRadius: '6px',
     fontSize: '14px',
-    backgroundColor: '#1a1a1a',
-    color: '#ffffff',
+    backgroundColor: '#ffffff',
+    color: '#333333',
     cursor: 'pointer',
   },
   gameContainer: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: '#e8dcc0', // 밝은 베이지 배경
   },
   controls: {
     position: 'fixed',
@@ -304,9 +344,11 @@ const styles: Record<string, React.CSSProperties> = {
     transform: 'translateX(-50%)',
     display: 'flex',
     gap: '16px',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     padding: '12px 24px',
     borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    border: '1px solid #d4c5a9',
     zIndex: 100,
   },
   controlItem: {
@@ -327,7 +369,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   controlText: {
     fontSize: '13px',
-    color: '#e5e7eb',
+    color: '#333333',
   },
 };
 
