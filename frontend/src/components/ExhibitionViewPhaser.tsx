@@ -128,6 +128,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
+          userId: user?.id,
+          hallId: currentHall?.id,
         });
         
         // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
@@ -147,6 +149,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
+          userId: user?.id,
+          hallId: currentHall?.id,
         });
       }
       // 씬이 있지만 아직 시작되지 않았으면 기다림 (preload 중일 수 있음)
@@ -185,6 +189,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
       onBoothInteract: handleBoothClick,
       selectedCharacter: user?.selectedCharacter,
       userNickname: user?.nickname, // 닉네임 전달
+      userId: user?.id,
+      hallId: currentHall?.id,
     });
 
     // 슬롯 시스템 비활성화 - 이벤트 리스너 제거
@@ -209,11 +215,14 @@ export const ExhibitionViewPhaser: React.FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      // 슬롯 시스템 비활성화 - 이벤트 리스너 정리 제거
-      // const cleanupScene = game.scene.getScene('MainScene') as MainScene;
-      // if (cleanupScene) {
-      //   cleanupScene.events.off('boothZoneInteract');
-      // }
+      // 멀티플레이어 연결 정리
+      if (game) {
+        const scene = game.scene.getScene('MainScene') as MainScene;
+        if (scene) {
+          // MainScene의 cleanupMultiplayer가 호출되도록 씬 종료 이벤트 발생
+          // (실제로는 씬이 종료될 때 자동으로 cleanupMultiplayer가 호출됨)
+        }
+      }
       // 게임은 컴포넌트 언마운트 시에만 destroy
       // (홀 변경 시에는 handleHallChange에서 처리)
     };
@@ -237,6 +246,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
         onBoothInteract: handleBoothClick,
         selectedCharacter: user?.selectedCharacter,
         userNickname: user?.nickname,
+        userId: user?.id,
+        hallId: currentHall?.id,
       });
       
       // 슬롯 시스템 비활성화 - 이벤트 리스너 재등록 제거

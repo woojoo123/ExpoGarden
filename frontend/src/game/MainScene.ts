@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Booth } from '@/types';
 import type { Direction } from '@/constants/characters';
+import { MultiplayerService, type PlayerPosition } from '@/services/MultiplayerService';
 
 // 슬롯 타입 정의 (비활성화 - 원래 그리드 배치 방식 사용)
 // type ExpoSlot = {
@@ -41,6 +42,14 @@ export class MainScene extends Phaser.Scene {
   private playerNameText!: Phaser.GameObjects.Text;
   private selectedCharIndex: number = 0; // 선택된 캐릭터 인덱스 (0-9)
   private userNickname: string = ''; // 사용자 닉네임
+  private userId: number | null = null; // 사용자 ID (멀티플레이어 식별용)
+  private hallId: number | null = null; // 홀 ID
+  
+  // 멀티플레이어 관련 필드
+  private otherPlayers: Map<number, Phaser.Physics.Arcade.Sprite> = new Map(); // userId -> 스프라이트
+  private otherPlayerNames: Map<number, Phaser.GameObjects.Text> = new Map(); // userId -> 닉네임 텍스트
+  private multiplayerService: MultiplayerService | null = null;
+  // lastPositionSent는 MultiplayerService 내부에서 관리하므로 제거
   
   // 슬롯 시스템 관련 필드 (비활성화 - 원래 그리드 배치 방식 사용)
   // private slots: ExpoSlot[] = [];
@@ -59,6 +68,8 @@ export class MainScene extends Phaser.Scene {
     onBoothInteract: (booth: Booth) => void; 
     selectedCharacter?: string; 
     userNickname?: string;
+    userId?: number;
+    hallId?: number;
   }) {
     console.log('[MainScene] init() 호출됨, 데이터:', {
       boothsCount: data?.booths?.length || 0,
@@ -69,6 +80,8 @@ export class MainScene extends Phaser.Scene {
     this.booths = data?.booths || [];
     this.onBoothInteract = data?.onBoothInteract;
     this.userNickname = data?.userNickname || '';
+    this.userId = data?.userId ?? null;
+    this.hallId = data?.hallId ?? null;
     
     // selectedCharacter는 JSON 문자열: { charIndex: number, size: 'Character64x64' }
     // 크기는 항상 Character64x64로 고정
@@ -258,6 +271,12 @@ export class MainScene extends Phaser.Scene {
 
     // 물리 월드 설정
     this.physics.world.setBounds(0, 0, 3000, 2000);
+    
+    // 멀티플레이어 서비스 초기화 (플레이어 생성 후)
+    // userId가 null이어도 익명 사용자로 처리 가능
+    if (this.hallId !== null) {
+      this.initializeMultiplayer();
+    }
   }
 
   private createAnimations() {
@@ -477,9 +496,23 @@ export class MainScene extends Phaser.Scene {
       this.interactionText.setPosition(screenX, screenY);
     }
 
+    // 멀티플레이어 위치 전송 (100ms마다)
+    if (this.multiplayerService && this.multiplayerService.isConnected()) {
+      this.multiplayerService.sendPosition(this.player.x, this.player.y);
+    }
+
+    // 다른 플레이어 닉네임 텍스트 위치 업데이트
+    for (const [userId, player] of this.otherPlayers.entries()) {
+      const nameText = this.otherPlayerNames.get(userId);
+      if (nameText && player.active) {
+        nameText.setPosition(player.x, player.y - player.displayHeight / 2 - 5);
+      }
+    }
+
     // 씬이 종료될 때 리사이즈 이벤트 정리
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off('resize', this.handleResize, this);
+      this.cleanupMultiplayer();
     });
   }
 
@@ -829,5 +862,188 @@ export class MainScene extends Phaser.Scene {
         this.interactionText.setVisible(false);
       }
     }
+  }
+
+  /**
+   * 멀티플레이어 서비스 초기화
+   */
+  private initializeMultiplayer() {
+    if (this.hallId === null) {
+      console.warn('[MainScene] 멀티플레이어 초기화 실패: hallId가 없음');
+      return;
+    }
+
+    // userId가 null이면 익명 사용자로 처리 (음수 ID 사용)
+    const effectiveUserId = this.userId ?? -1;
+
+    console.log('[MainScene] 멀티플레이어 서비스 초기화 시작', {
+      hallId: this.hallId,
+      userId: effectiveUserId,
+      nickname: this.userNickname,
+      charIndex: this.selectedCharIndex,
+    });
+
+    this.multiplayerService = new MultiplayerService();
+    this.multiplayerService.connect(
+      this.hallId,
+      effectiveUserId,
+      this.userNickname || '게스트',
+      this.selectedCharIndex,
+      this.player.x,
+      this.player.y,
+      (position: PlayerPosition) => {
+        this.handlePlayerUpdate(position);
+      }
+    );
+  }
+
+  /**
+   * 다른 플레이어 업데이트 처리
+   */
+  private handlePlayerUpdate(position: PlayerPosition) {
+    const effectiveUserId = this.userId ?? -1;
+    if (position.userId === effectiveUserId) {
+      console.log('[MainScene] Ignoring own player update:', position.userId);
+      return; // 자신의 메시지는 무시
+    }
+
+    console.log('[MainScene] Handling player update:', {
+      type: position.type,
+      userId: position.userId,
+      nickname: position.nickname,
+      x: position.x,
+      y: position.y,
+    });
+
+    switch (position.type) {
+      case 'JOIN':
+        console.log('[MainScene] Creating other player:', position.userId);
+        this.createOtherPlayer(position.userId, position.nickname, position.x, position.y, position.charIndex);
+        break;
+      case 'UPDATE':
+        this.updateOtherPlayer(position.userId, position.x, position.y);
+        break;
+      case 'LEAVE':
+        console.log('[MainScene] Removing other player:', position.userId);
+        this.removeOtherPlayer(position.userId);
+        break;
+    }
+  }
+
+  /**
+   * 다른 플레이어 스프라이트 생성
+   */
+  private createOtherPlayer(userId: number, nickname: string, x: number, y: number, charIndex: number) {
+    // 이미 존재하는 플레이어는 업데이트만
+    if (this.otherPlayers.has(userId)) {
+      this.updateOtherPlayer(userId, x, y);
+      return;
+    }
+
+    console.log('[MainScene] 다른 플레이어 생성:', { userId, nickname, x, y, charIndex });
+
+    // 캐릭터 프레임 계산 (플레이어와 동일한 로직)
+    const blockX = charIndex % 2;
+    const blockY = Math.floor(charIndex / 2);
+    const baseCol = blockX * 4;
+    const baseRow = blockY * 3;
+    const idleDownCol = baseCol + 1;
+    const idleDownRow = baseRow;
+    const startFrame = idleDownRow * 8 + idleDownCol;
+
+    // 다른 플레이어 스프라이트 생성
+    const otherPlayer = this.physics.add.sprite(x, y, 'Character64x64', startFrame);
+    otherPlayer.setDepth(10);
+    otherPlayer.setFrame(startFrame);
+    otherPlayer.setSize(64, 64);
+    otherPlayer.setScale(0.5);
+    otherPlayer.setCollideWorldBounds(true);
+    otherPlayer.setImmovable(true); // 다른 플레이어는 물리적으로 고정
+
+    this.otherPlayers.set(userId, otherPlayer);
+
+    // 닉네임 텍스트 생성
+    const nameText = this.add.text(x, y - otherPlayer.displayHeight / 2 - 5, nickname, {
+      fontSize: '14px',
+      fontFamily: 'Arial',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
+      align: 'center',
+    });
+    nameText.setDepth(20);
+    nameText.setOrigin(0.5, 1);
+
+    this.otherPlayerNames.set(userId, nameText);
+  }
+
+  /**
+   * 다른 플레이어 위치 업데이트
+   */
+  private updateOtherPlayer(userId: number, x: number, y: number) {
+    const player = this.otherPlayers.get(userId);
+    const nameText = this.otherPlayerNames.get(userId);
+
+    if (player) {
+      // 부드러운 이동을 위해 lerp 사용
+      this.tweens.add({
+        targets: player,
+        x: x,
+        y: y,
+        duration: 100, // 100ms 동안 이동
+        ease: 'Linear',
+      });
+    }
+
+    if (nameText) {
+      this.tweens.add({
+        targets: nameText,
+        x: x,
+        y: y - (player ? player.displayHeight / 2 + 5 : 0),
+        duration: 100,
+        ease: 'Linear',
+      });
+    }
+  }
+
+  /**
+   * 다른 플레이어 제거
+   */
+  private removeOtherPlayer(userId: number) {
+    console.log('[MainScene] 다른 플레이어 제거:', userId);
+
+    const player = this.otherPlayers.get(userId);
+    const nameText = this.otherPlayerNames.get(userId);
+
+    if (player) {
+      player.destroy();
+      this.otherPlayers.delete(userId);
+    }
+
+    if (nameText) {
+      nameText.destroy();
+      this.otherPlayerNames.delete(userId);
+    }
+  }
+
+  /**
+   * 멀티플레이어 정리
+   */
+  private cleanupMultiplayer() {
+    if (this.multiplayerService) {
+      this.multiplayerService.disconnect();
+      this.multiplayerService = null;
+    }
+
+    // 모든 다른 플레이어 제거
+    for (const [userId, player] of this.otherPlayers.entries()) {
+      player.destroy();
+      const nameText = this.otherPlayerNames.get(userId);
+      if (nameText) {
+        nameText.destroy();
+      }
+    }
+    this.otherPlayers.clear();
+    this.otherPlayerNames.clear();
   }
 }
