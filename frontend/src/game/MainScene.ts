@@ -28,11 +28,11 @@ export class MainScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: {
-    W: Phaser.Input.Keyboard.Key;
-    A: Phaser.Input.Keyboard.Key;
-    S: Phaser.Input.Keyboard.Key;
-    D: Phaser.Input.Keyboard.Key;
+  private arrowKeys!: {
+    left: Phaser.Input.Keyboard.Key;
+    right: Phaser.Input.Keyboard.Key;
+    up: Phaser.Input.Keyboard.Key;
+    down: Phaser.Input.Keyboard.Key;
   };
   private booths: Booth[] = [];
   private boothSprites: Phaser.Physics.Arcade.Sprite[] = [];
@@ -221,13 +221,20 @@ export class MainScene extends Phaser.Scene {
     // 플레이어와 쇼룸 간 충돌 설정
     this.physics.add.collider(this.player, this.boothSprites);
 
-    // 키보드 입력 설정
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    this.wasd = {
-      W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      A: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      S: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      D: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+    // 키보드 입력 설정 (방향키만 사용)
+    if (!this.input.keyboard) {
+      console.error('[MainScene] 키보드 입력을 사용할 수 없습니다');
+      return;
+    }
+    
+    this.cursors = this.input.keyboard.createCursorKeys();
+    
+    // 방향키를 명시적으로 등록 (ArrowLeft, ArrowRight, ArrowUp, ArrowDown)
+    this.arrowKeys = {
+      left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+      right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
+      up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+      down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
     };
 
     // E키로 상호작용
@@ -453,16 +460,16 @@ export class MainScene extends Phaser.Scene {
     let velocityX = 0;
     let velocityY = 0;
 
-    // WASD / 방향키 입력
-    if (this.cursors.left.isDown || this.wasd.A.isDown) {
+    // 방향키 입력 (cursors와 arrowKeys 모두 체크)
+    if (this.cursors.left.isDown || this.arrowKeys.left.isDown) {
       velocityX = -speed;
-    } else if (this.cursors.right.isDown || this.wasd.D.isDown) {
+    } else if (this.cursors.right.isDown || this.arrowKeys.right.isDown) {
       velocityX = speed;
     }
 
-    if (this.cursors.up.isDown || this.wasd.W.isDown) {
+    if (this.cursors.up.isDown || this.arrowKeys.up.isDown) {
       velocityY = -speed;
-    } else if (this.cursors.down.isDown || this.wasd.S.isDown) {
+    } else if (this.cursors.down.isDown || this.arrowKeys.down.isDown) {
       velocityY = speed;
     }
 

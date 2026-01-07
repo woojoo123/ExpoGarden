@@ -275,7 +275,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
       <div style={styles.header}>
         <div style={styles.headerLeft}>
           <h1 style={styles.title}>🎮 {currentExhibition.title}</h1>
-          <p style={styles.subtitle}>WASD 또는 방향키로 이동, E키로 쇼룸 상호작용</p>
+          <p style={styles.subtitle}>방향키로 이동, E키로 쇼룸 상호작용</p>
         </div>
         <div style={styles.headerRight}>
           <div style={styles.hallSelector}>
@@ -312,7 +312,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
       {/* 조작 안내 */}
       <div style={styles.controls}>
         <div style={styles.controlItem}>
-          <span style={styles.key}>WASD</span>
+          <span style={styles.key}>방향키</span>
           <span style={styles.controlText}>이동</span>
         </div>
         <div style={styles.controlItem}>
