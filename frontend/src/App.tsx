@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
 import { LoginPage } from './components/LoginPage';
 import { SignupPage } from './components/SignupPage';
+import { HallLobby } from './components/HallLobby';
 import { ExhibitionViewPhaser } from './components/ExhibitionViewPhaser';
 import { OAuthCallback } from './components/OAuthCallback';
 import { MyBoothsPage } from './components/MyBoothsPage';
@@ -46,7 +47,8 @@ function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/booths" element={<BoothListPage />} />
         <Route path="/showroom/:id" element={<ShowroomDetailPage />} />
-        <Route path="/metaverse" element={<ExhibitionViewPhaser />} />
+        <Route path="/metaverse" element={<HallLobby />} />
+        <Route path="/metaverse/:hallId" element={<ExhibitionViewPhaser />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/character-selection" element={<CharacterSelectionPage />} />
         <Route path="/my/booths" element={<MyBoothsPage />} />

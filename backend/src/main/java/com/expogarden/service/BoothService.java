@@ -78,13 +78,13 @@ public class BoothService {
     
     @Transactional
     public BoothDto createBooth(BoothCreateRequest request, UserPrincipal principal) {
-        // 전시/홀을 1번으로 고정 (단일 전시 운영)
-        Long fixedExhibitionId = 1L;
-        Long fixedHallId = 1L;
+        // 전시는 1번 고정, 홀은 카테고리 기반으로 할당
+        Long exhibitionId = 1L;
+        Long hallId = getCategoryHallId(request.getCategory());
         
         Booth booth = Booth.builder()
-            .exhibitionId(fixedExhibitionId)
-            .hallId(fixedHallId)
+            .exhibitionId(exhibitionId)
+            .hallId(hallId)
             .ownerUserId(principal.getId())
             .status(BoothStatus.DRAFT)
             .title(request.getTitle())
@@ -255,6 +255,29 @@ public class BoothService {
             .collect(Collectors.toList()));
         
         return dto;
+    }
+    
+    /**
+     * 카테고리 문자열을 해당하는 홀 ID로 변환
+     * @param category 부스 카테고리
+     * @return 홀 ID (1-9)
+     */
+    private Long getCategoryHallId(String category) {
+        if (category == null || category.isBlank()) {
+            return 9L; // 기본값: 기타 홀
+        }
+        
+        return switch (category) {
+            case "AI" -> 1L;
+            case "게임" -> 2L;
+            case "아트/디자인" -> 3L;
+            case "사진/영상" -> 4L;
+            case "일러스트" -> 5L;
+            case "음악" -> 6L;
+            case "3D" -> 7L;
+            case "프로그래밍" -> 8L;
+            default -> 9L; // 기타
+        };
     }
 }
 

@@ -44,6 +44,7 @@ export class MainScene extends Phaser.Scene {
   private userNickname: string = ''; // 사용자 닉네임
   private userId: number | null = null; // 사용자 ID (멀티플레이어 식별용)
   private hallId: number | null = null; // 홀 ID
+  private backgroundKey: string = 'expoBg_ai'; // 배경 이미지 키 (기본값: AI 홀)
   
   // 멀티플레이어 관련 필드
   private otherPlayers: Map<number, Phaser.Physics.Arcade.Sprite> = new Map(); // userId -> 스프라이트
@@ -70,11 +71,14 @@ export class MainScene extends Phaser.Scene {
     userNickname?: string;
     userId?: number;
     hallId?: number;
+    backgroundKey?: string;
   }) {
     console.log('[MainScene] init() 호출됨, 데이터:', {
       boothsCount: data?.booths?.length || 0,
       hasOnBoothInteract: !!data?.onBoothInteract,
       hasSelectedCharacter: !!data?.selectedCharacter,
+      hallId: data?.hallId,
+      backgroundKey: data?.backgroundKey,
     });
     
     this.booths = data?.booths || [];
@@ -82,6 +86,7 @@ export class MainScene extends Phaser.Scene {
     this.userNickname = data?.userNickname || '';
     this.userId = data?.userId ?? null;
     this.hallId = data?.hallId ?? null;
+    this.backgroundKey = data?.backgroundKey || 'expoBg_ai';
     
     // selectedCharacter는 JSON 문자열: { charIndex: number, size: 'Character64x64' }
     // 크기는 항상 Character64x64로 고정
@@ -102,13 +107,19 @@ export class MainScene extends Phaser.Scene {
   preload() {
     console.log('[MainScene] preload() 호출됨, 캐릭터: Character64x64');
     
-    // 전시 홀 배경 이미지 로드
-    // Vite의 public 디렉터리는 루트 기준 / 로 접근 가능
-    // 실제 파일 위치: frontend/public/assets/backgrounds/expo_bg.png
-    this.load.image('expoBg', '/assets/backgrounds/expo_bg.png');
+    // 카테고리별 홀 배경 이미지 로드 (모두 미리 로드)
+    this.load.image('expoBg_ai', '/assets/backgrounds/expo_bg_ai.png');
+    this.load.image('expoBg_game', '/assets/backgrounds/expo_bg_game.png');
+    this.load.image('expoBg_art', '/assets/backgrounds/expo_bg_art.png');
+    this.load.image('expoBg_photo', '/assets/backgrounds/expo_bg_photo.png');
+    this.load.image('expoBg_illustration', '/assets/backgrounds/expo_bg_illustration.png');
+    this.load.image('expoBg_music', '/assets/backgrounds/expo_bg_music.png');
+    this.load.image('expoBg_3d', '/assets/backgrounds/expo_bg_3d.png');
+    this.load.image('expoBg_programming', '/assets/backgrounds/expo_bg_programming.png');
+    this.load.image('expoBg_etc', '/assets/backgrounds/expo_bg_etc.png');
 
-    // 슬롯 시스템 비활성화 - 원래 그리드 배치 방식 사용
-    // this.load.json('expoSlots', '/assets/backgrounds/expo_slots.json');
+    // 쇼룸 부스 베이스 이미지 로드
+    this.load.image('boothBase', '/assets/booths/booth_base.png');
 
     // 완성된 캐릭터 스프라이트 시트 로드 (항상 Character64x64 사용)
     // Character64x64.png: 512x960 (64x64 프레임, 가로 8칸, 세로 15칸)
@@ -120,10 +131,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
-    console.log('[MainScene] create() 호출됨, 쇼룸 개수:', this.booths.length);
+    console.log('[MainScene] create() 호출됨, 쇼룸 개수:', this.booths.length, '배경:', this.backgroundKey);
     
-    // 정적인 전시 홀 배경 이미지 추가
-    this.background = this.add.image(0, 0, 'expoBg');
+    // 홀별 배경 이미지 추가
+    this.background = this.add.image(0, 0, this.backgroundKey);
     this.background.setOrigin(0, 0); // 좌상단이 (0,0)
     this.background.setDepth(-1000); // 모든 오브젝트 뒤에 렌더링
 
@@ -217,7 +228,7 @@ export class MainScene extends Phaser.Scene {
 
     // 원래 방식: 그리드 자동 배치
     this.createBooths();
-    
+
     // 플레이어와 쇼룸 간 충돌 설정
     this.physics.add.collider(this.player, this.boothSprites);
 
@@ -320,11 +331,11 @@ export class MainScene extends Phaser.Scene {
         frames.push(frameIndex);
       }
       
-      this.anims.create({
+        this.anims.create({
         key: `Character64x64-walk-${dir}`,
         frames: frames.map(frame => ({ key: 'Character64x64', frame })),
         frameRate: 10,
-        repeat: -1,
+          repeat: -1,
       });
     });
     
@@ -334,19 +345,6 @@ export class MainScene extends Phaser.Scene {
   private createBooths() {
     console.log('[MainScene] createBooths() 호출됨, 쇼룸 개수:', this.booths.length);
     
-    // 쇼룸별 색상 매핑
-    const categoryColors: Record<string, number> = {
-      '아트/디자인': 0xef4444,
-      '사진/영상': 0x8b5cf6,
-      '일러스트': 0xec4899,
-      '게임': 0x10b981,
-      '음악': 0xf59e0b,
-      '3D': 0x06b6d4,
-      '프로그래밍': 0x6366f1,
-      'AI': 0x3b82f6,
-      '기타': 0x6b7280,
-    };
-
     // 배경 이미지의 실제 월드 크기 사용
     const worldWidth = this.physics.world.bounds.width;
     const worldHeight = this.physics.world.bounds.height;
@@ -378,8 +376,8 @@ export class MainScene extends Phaser.Scene {
       availableBooths: this.booths.length,
     });
 
-    // 시작 위치 (왼쪽 위, 오른쪽과 아래로 약간 이동)
-    const offsetX = worldWidth * 0.05; // 오른쪽으로 5% 이동
+    // 시작 위치 (왼쪽 위, 약간 왼쪽으로 이동)
+    const offsetX = worldWidth * -0.02; // 왼쪽으로 2% 이동
     const offsetY = worldHeight * 0.05; // 아래로 5% 이동
     const startX = marginX + boothWidth / 2 + offsetX;
     const startY = marginY + boothHeight / 2 + offsetY;
@@ -407,20 +405,12 @@ export class MainScene extends Phaser.Scene {
         position: `(${x}, ${y})`,
       });
 
-      // 쇼룸 그래픽 생성
-      const graphics = this.add.graphics();
-      const color = categoryColors[booth.category] || 0x6b7280;
+      // 쇼룸 이미지 스프라이트 생성 (원본 색상 그대로 사용)
+      const boothSprite = this.physics.add.sprite(x, y, 'boothBase');
       
-      graphics.fillStyle(color, 1);
-      graphics.fillRoundedRect(-boothWidth / 2, -boothHeight / 2, boothWidth, boothHeight, 15);
-      graphics.lineStyle(6, 0xffffff, 0.9);
-      graphics.strokeRoundedRect(-boothWidth / 2, -boothHeight / 2, boothWidth, boothHeight, 15);
+      // 부스 크기에 맞게 조정
+      boothSprite.setDisplaySize(boothWidth, boothHeight);
       
-      graphics.generateTexture(`booth_${booth.id}`, boothWidth, boothHeight);
-      graphics.destroy();
-
-      // 쇼룸 스프라이트 생성
-      const boothSprite = this.physics.add.sprite(x, y, `booth_${booth.id}`);
       boothSprite.setImmovable(true);
       boothSprite.setData('booth', booth);
       boothSprite.setDepth(5);
@@ -529,9 +519,9 @@ export class MainScene extends Phaser.Scene {
   private resizeBackgroundToView() {
     if (!this.background) return;
 
-    const texture = this.textures.get('expoBg');
+    const texture = this.textures.get(this.backgroundKey);
     if (!texture || !texture.source || !texture.source[0]) {
-      console.warn('[MainScene] 배경 이미지 텍스처가 아직 로드되지 않음');
+      console.warn('[MainScene] 배경 이미지 텍스처가 아직 로드되지 않음:', this.backgroundKey);
       return;
     }
     

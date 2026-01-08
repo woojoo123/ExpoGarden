@@ -1,43 +1,66 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Phaser from 'phaser';
 import { MainScene } from '@/game/MainScene';
-// import type { BoothZoneInteractEvent } from '@/game/MainScene'; // 슬롯 시스템 비활성화
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
 import { BoothPanel } from '@/components/BoothPanel';
-import type { Booth } from '@/types';
+import type { Booth, Hall } from '@/types';
+import { getBackgroundKeyForHall, getCategoryName } from '@/utils/hallMapping';
 
 export const ExhibitionViewPhaser: React.FC = () => {
   const navigate = useNavigate();
+  const { hallId: hallIdParam } = useParams<{ hallId: string }>();
   const { sessionId, user, characterChangedTrigger } = useStore();
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
+  const [currentHallId, setCurrentHallId] = useState<number>(Number(hallIdParam) || 1);
+  const [halls, setHalls] = useState<Hall[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 고정된 전시/홀 ID (단일 전시 운영)
   const FIXED_EXHIBITION_ID = 1;
-  const FIXED_HALL_ID = 1;
 
-  // 쇼룸 목록 로드
+  // URL 파라미터가 변경되면 currentHallId 업데이트
   useEffect(() => {
-    loadBooths();
+    if (hallIdParam) {
+      setCurrentHallId(Number(hallIdParam));
+    }
+  }, [hallIdParam]);
+
+  // 홀 목록 로드
+  useEffect(() => {
+    const loadHalls = async () => {
+      try {
+        const response = await apiClient.getHalls(FIXED_EXHIBITION_ID);
+        setHalls(response.data);
+      } catch (error) {
+        console.error('[ExhibitionViewPhaser] 홀 목록 로드 실패:', error);
+      }
+    };
+    loadHalls();
   }, []);
 
+  // 쇼룸 목록 로드 (currentHallId가 변경될 때마다)
+  useEffect(() => {
+    loadBooths();
+  }, [currentHallId]);
+
   const loadBooths = async () => {
+    setLoading(true);
     try {
       const response = await apiClient.getBooths({
         exhibitionId: FIXED_EXHIBITION_ID,
-        hallId: FIXED_HALL_ID,
+        hallId: currentHallId,
         status: 'APPROVED',
       });
       console.log('[ExhibitionViewPhaser] 쇼룸 로드 완료:', {
+        hallId: currentHallId,
         count: response.data.content.length,
-        booths: response.data.content.map(b => ({ id: b.id, title: b.title, status: b.status, hallId: b.hallId, exhibitionId: b.exhibitionId })),
-        response: response.data,
+        booths: response.data.content.map(b => ({ id: b.id, title: b.title, category: b.category })),
       });
       setBooths(response.data.content);
 
@@ -46,7 +69,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
         exhibitionId: FIXED_EXHIBITION_ID,
         sessionId,
         action: 'ENTER_HALL',
-        metadata: { hallId: FIXED_HALL_ID },
+        metadata: { hallId: currentHallId },
       });
     } catch (error) {
       console.error('[ExhibitionViewPhaser] 쇼룸 로드 실패:', error);
@@ -88,18 +111,21 @@ export const ExhibitionViewPhaser: React.FC = () => {
       return;
     }
     
+    const backgroundKey = getBackgroundKeyForHall(currentHallId);
+    
     // 게임이 이미 있으면 씬만 재시작 (booths가 업데이트될 때마다)
     if (gameRef.current) {
       const scene = gameRef.current.scene.getScene('MainScene');
       if (scene) {
-        console.log('[ExhibitionViewPhaser] 씬 재시작, 쇼룸 개수:', booths.length);
+        console.log('[ExhibitionViewPhaser] 씬 재시작, 홀:', currentHallId, '쇼룸 개수:', booths.length);
         scene.scene.restart({
           booths: booths,
           onBoothInteract: handleBoothClick,
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
           userId: user?.id,
-          hallId: FIXED_HALL_ID,
+          hallId: currentHallId,
+          backgroundKey: backgroundKey,
         });
       } else {
         // 씬이 없으면 추가하고 시작
@@ -111,7 +137,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
           selectedCharacter: user?.selectedCharacter,
           userNickname: user?.nickname,
           userId: user?.id,
-          hallId: FIXED_HALL_ID,
+          hallId: currentHallId,
+          backgroundKey: backgroundKey,
         });
       }
       return;
@@ -151,7 +178,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
       selectedCharacter: user?.selectedCharacter,
       userNickname: user?.nickname,
       userId: user?.id,
-      hallId: FIXED_HALL_ID,
+      hallId: currentHallId,
+      backgroundKey: backgroundKey,
     });
 
     // 윈도우 리사이즈 핸들링
@@ -180,6 +208,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
 
     console.log('[ExhibitionViewPhaser] 캐릭터 변경 감지, 씬 재시작...');
     
+    const backgroundKey = getBackgroundKeyForHall(currentHallId);
     const scene = gameRef.current.scene.getScene('MainScene') as MainScene;
     if (scene) {
       scene.scene.restart({
@@ -188,7 +217,8 @@ export const ExhibitionViewPhaser: React.FC = () => {
         selectedCharacter: user?.selectedCharacter,
         userNickname: user?.nickname,
         userId: user?.id,
-        hallId: FIXED_HALL_ID,
+        hallId: currentHallId,
+        backgroundKey: backgroundKey,
       });
     }
   }, [characterChangedTrigger]);
@@ -197,17 +227,35 @@ export const ExhibitionViewPhaser: React.FC = () => {
     return <div style={styles.loading}>로딩 중...</div>;
   }
 
+  const handleHallChange = (hallId: number) => {
+    navigate(`/metaverse/${hallId}`);
+  };
+
   return (
     <div style={styles.container}>
       {/* 상단 헤더 */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <h1 style={styles.title}>🎮 ExpoGarden 메타버스</h1>
+          <h1 style={styles.title}>
+            🎮 {getCategoryName(currentHallId)} 홀
+          </h1>
           <p style={styles.subtitle}>
-            승인된 쇼룸 {booths.length}개 | 방향키로 이동, E키로 쇼룸 상호작용
+            {booths.length}개 쇼룸 | 방향키로 이동, E키로 상호작용
           </p>
         </div>
         <div style={styles.headerRight}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={styles.toggleButton}
+          >
+            {sidebarOpen ? '◀ 홀 목록 닫기' : '다른 홀 ▶'}
+          </button>
+          <button
+            onClick={() => navigate('/metaverse')}
+            style={styles.exitButton}
+          >
+            로비
+          </button>
           <button
             onClick={() => navigate('/')}
             style={styles.exitButton}
@@ -216,6 +264,25 @@ export const ExhibitionViewPhaser: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 사이드바 - 홀 목록 */}
+      {sidebarOpen && (
+        <div style={styles.sidebar}>
+          <h3 style={styles.sidebarTitle}>홀 선택</h3>
+          {halls.map((hall) => (
+            <div
+              key={hall.id}
+              style={{
+                ...styles.sidebarItem,
+                ...(hall.id === currentHallId ? styles.sidebarItemActive : {}),
+              }}
+              onClick={() => handleHallChange(hall.id)}
+            >
+              {hall.name}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Phaser 게임 컨테이너 */}
       <div ref={containerRef} style={styles.gameContainer} />
@@ -330,6 +397,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#333333',
     cursor: 'pointer',
   },
+  toggleButton: {
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#ffffff',
+    backgroundColor: '#5b4cdb',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  },
   exitButton: {
     padding: '8px 16px',
     fontSize: '14px',
@@ -340,6 +418,45 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '6px',
     cursor: 'pointer',
     transition: 'background-color 0.2s',
+  },
+  sidebar: {
+    position: 'fixed',
+    right: 0,
+    top: '72px',
+    width: '250px',
+    height: 'calc(100vh - 72px)',
+    backgroundColor: '#2a2a2a',
+    borderLeft: '2px solid #444',
+    padding: '20px',
+    overflowY: 'auto',
+    zIndex: 100,
+    boxShadow: '-4px 0 8px rgba(0,0,0,0.3)',
+  },
+  sidebarTitle: {
+    margin: '0 0 20px 0',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#ffffff',
+    borderBottom: '2px solid #5b4cdb',
+    paddingBottom: '12px',
+  },
+  sidebarItem: {
+    padding: '14px 16px',
+    margin: '8px 0',
+    backgroundColor: '#1a1a1a',
+    color: '#cccccc',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontSize: '15px',
+    fontWeight: 500,
+    border: '2px solid transparent',
+  },
+  sidebarItemActive: {
+    backgroundColor: '#5b4cdb',
+    color: '#ffffff',
+    border: '2px solid #7c6cef',
+    fontWeight: 'bold',
   },
   gameContainer: {
     flex: 1,
