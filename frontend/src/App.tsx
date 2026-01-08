@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { LandingPage } from './components/LandingPage';
 import { LoginPage } from './components/LoginPage';
@@ -15,9 +15,13 @@ import { BoothListPage } from './components/BoothListPage';
 import { ShowroomDetailPage } from './components/ShowroomDetailPage';
 import { apiClient } from './api/client';
 import { useStore } from './state/store';
+import { ChatNotificationService } from './services/ChatNotificationService';
 
 function App() {
   const setUser = useStore((state) => state.setUser);
+  const user = useStore((state) => state.user);
+  const incrementUnreadChat = useStore((state) => state.incrementUnreadChat);
+  const [chatNotificationService] = useState(() => new ChatNotificationService());
   
   useEffect(() => {
     // 앱 시작 시 토큰이 있으면 사용자 정보 복원
@@ -38,6 +42,18 @@ function App() {
         });
     }
   }, [setUser]);
+
+  useEffect(() => {
+    if (user?.id) {
+      chatNotificationService.connect(user.id, (notification) => {
+        incrementUnreadChat(notification.boothId);
+      });
+    } else {
+      chatNotificationService.disconnect();
+    }
+
+    return () => chatNotificationService.disconnect();
+  }, [user?.id, incrementUnreadChat, chatNotificationService]);
   
   return (
     <BrowserRouter>
@@ -62,4 +78,3 @@ function App() {
 }
 
 export default App;
-

@@ -76,6 +76,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/uploads/**",
                     "/ws/**",
+                    "/booths/*/chat/**",
                     "/statistics/**"
                 ).permitAll()
                 // /booths/{id}는 @PreAuthorize에서 처리 (APPROVED면 principal null 허용)
@@ -113,4 +114,3 @@ public class SecurityConfig {
         return source;
     }
 }
-

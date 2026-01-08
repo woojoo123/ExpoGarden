@@ -8,6 +8,7 @@ import type {
   Page,
   Question,
   GuestbookEntry,
+  ChatMessage,
 } from '@/types';
 
 class ApiClient {
@@ -260,6 +261,15 @@ class ApiClient {
     return response.data;
   }
 
+  // Chat
+  async getChatMessages(boothId: number, page: number = 0) {
+    const response = await this.client.get<ApiResponse<Page<ChatMessage>>>(
+      `/booths/${boothId}/chat/messages`,
+      { params: { page, size: 50 } }
+    );
+    return response.data;
+  }
+
   // Tracking
   async trackEvent(event: {
     exhibitionId: number;
@@ -329,4 +339,3 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
-

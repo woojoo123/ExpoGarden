@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Booth } from '@/types';
 import { ChatPanel } from './ChatPanel';
+import { useStore } from '@/state/store';
 
 interface BoothPanelProps {
   booth: Booth;
@@ -9,6 +10,7 @@ interface BoothPanelProps {
 
 export const BoothPanel: React.FC<BoothPanelProps> = ({ booth, onClose }) => {
   const [showChat, setShowChat] = useState(false);
+  const unreadCount = useStore((state) => state.unreadChatCounts[booth.id] || 0);
 
   return (
     <div style={styles.overlay}>
@@ -18,6 +20,9 @@ export const BoothPanel: React.FC<BoothPanelProps> = ({ booth, onClose }) => {
           <div style={styles.headerButtons}>
             <button onClick={() => setShowChat(!showChat)} style={styles.chatBtn}>
               {showChat ? '📄 정보' : '💬 채팅'}
+              {!showChat && unreadCount > 0 && (
+                <span style={styles.chatBadge}>{unreadCount}</span>
+              )}
             </button>
             <button onClick={onClose} style={styles.closeBtn}>
               ✕
@@ -152,6 +157,23 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: '14px',
     fontWeight: 600,
+    position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  chatBadge: {
+    minWidth: '18px',
+    height: '18px',
+    padding: '0 6px',
+    borderRadius: '9px',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    fontSize: '11px',
+    fontWeight: 700,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   closeBtn: {
     background: 'none',
@@ -248,4 +270,3 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
   },
 };
-

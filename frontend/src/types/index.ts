@@ -124,6 +124,16 @@ export interface GuestbookEntry {
   createdAt: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  boothId: number;
+  userId?: number | null;
+  username: string;
+  message: string;
+  timestamp: string;
+  type: 'CHAT' | 'JOIN' | 'LEAVE';
+}
+
 export interface Page<T> {
   content: T[];
   totalElements: number;
@@ -136,4 +146,3 @@ export interface ApiResponse<T> {
   data: T;
   timestamp?: string;
 }
-

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ChatService, ChatMessage } from '@/services/ChatService';
+import { ChatService } from '@/services/ChatService';
+import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
+import type { ChatMessage } from '@/types';
 
 interface ChatPanelProps {
   boothId: number;
@@ -8,7 +10,7 @@ interface ChatPanelProps {
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({ boothId, boothTitle }) => {
-  const { user } = useStore();
+  const { user, clearUnreadChat } = useStore();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [chatService] = useState(() => new ChatService());
@@ -17,18 +19,39 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ boothId, boothTitle }) => 
 
   useEffect(() => {
     const username = user?.nickname || `게스트${Math.floor(Math.random() * 10000)}`;
-    
+    let isActive = true;
+    setMessages([]);
+    clearUnreadChat(boothId);
+
+    const loadHistory = async () => {
+      try {
+        const response = await apiClient.getChatMessages(boothId);
+        if (!isActive) return;
+        const history = [...response.data.content].reverse();
+        setMessages(history);
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      }
+    };
+
+    loadHistory();
+
     chatService.connect(boothId, username, (message) => {
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => {
+        if (prev.some((item) => item.id === message.id)) return prev;
+        return [...prev, message];
+      });
+      clearUnreadChat(boothId);
     });
 
     setIsConnected(true);
 
     return () => {
+      isActive = false;
       chatService.disconnect();
       setIsConnected(false);
     };
-  }, [boothId, user]);
+  }, [boothId, user, clearUnreadChat]);
 
   useEffect(() => {
     // 새 메시지가 오면 스크롤을 맨 아래로
@@ -219,4 +242,3 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
   },
 };
-

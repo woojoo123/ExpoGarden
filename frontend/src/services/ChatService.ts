@@ -1,15 +1,6 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-
-export interface ChatMessage {
-  id: string;
-  boothId: number;
-  userId?: number;
-  username: string;
-  message: string;
-  timestamp: string;
-  type: 'CHAT' | 'JOIN' | 'LEAVE';
-}
+import type { ChatMessage } from '@/types';
 
 export class ChatService {
   private client: Client | null = null;
@@ -84,4 +75,3 @@ export class ChatService {
     return this.client?.connected || false;
   }
 }
-

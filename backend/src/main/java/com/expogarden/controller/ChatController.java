@@ -1,6 +1,8 @@
 package com.expogarden.controller;
 
 import com.expogarden.dto.ChatMessageDto;
+import com.expogarden.dto.ChatNotificationDto;
+import com.expogarden.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class ChatController {
     
     private final SimpMessagingTemplate messagingTemplate;
+    private final ChatService chatService;
     
     // 부스별 채팅 메시지 전송
     @MessageMapping("/chat.booth.{boothId}")
@@ -29,13 +32,21 @@ public class ChatController {
         @Payload ChatMessageDto message,
         SimpMessageHeaderAccessor headerAccessor
     ) {
-        message.setId(UUID.randomUUID().toString());
-        message.setBoothId(boothId);
-        message.setTimestamp(Instant.now());
-        
-        log.info("Chat message in booth {}: {} - {}", boothId, message.getUsername(), message.getMessage());
-        
-        return message;
+        ChatMessageDto savedMessage = chatService.createChatMessage(boothId, message);
+
+        log.info("Chat message in booth {}: {} - {}", boothId, savedMessage.getUsername(), savedMessage.getMessage());
+
+        Long ownerUserId = chatService.getBoothOwnerId(boothId);
+        ChatNotificationDto notification = ChatNotificationDto.builder()
+            .boothId(boothId)
+            .messageId(savedMessage.getId())
+            .username(savedMessage.getUsername())
+            .messagePreview(savedMessage.getMessage())
+            .timestamp(savedMessage.getTimestamp())
+            .build();
+        messagingTemplate.convertAndSend("/topic/owner." + ownerUserId, notification);
+
+        return savedMessage;
     }
     
     // 사용자 입장
@@ -61,4 +72,3 @@ public class ChatController {
         return message;
     }
 }
-

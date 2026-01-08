@@ -7,6 +7,7 @@ import type { Booth } from '@/types';
 export const MyBoothsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useStore();
+  const unreadChatCounts = useStore((state) => state.unreadChatCounts);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,6 +92,11 @@ export const MyBoothsPage: React.FC = () => {
         <div style={styles.grid}>
           {booths.map((booth) => (
             <div key={booth.id} style={styles.card}>
+              {unreadChatCounts[booth.id] > 0 && (
+                <div style={styles.chatAlert}>
+                  💬 새 메시지 {unreadChatCounts[booth.id]}
+                </div>
+              )}
               {booth.thumbnailUrl && (
                 <img src={booth.thumbnailUrl} alt={booth.title} style={styles.thumbnail} />
               )}
@@ -224,6 +230,19 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '8px',
     overflow: 'hidden',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    position: 'relative',
+  },
+  chatAlert: {
+    position: 'absolute',
+    top: '12px',
+    right: '12px',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    fontSize: '12px',
+    fontWeight: 600,
+    padding: '4px 8px',
+    borderRadius: '12px',
+    zIndex: 1,
   },
   thumbnail: {
     width: '100%',
@@ -290,4 +309,3 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
 };
-
