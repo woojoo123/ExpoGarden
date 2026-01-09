@@ -75,7 +75,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ boothId, boothTitle }) => 
     <div style={styles.container}>
       <div style={styles.header}>
         <h3 style={styles.title}>💬 실시간 채팅</h3>
-        <span style={styles.status(isConnected)}>
+        <span style={statusStyle(isConnected)}>
           {isConnected ? '● 연결됨' : '○ 연결 끊김'}
         </span>
       </div>
@@ -155,10 +155,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '16px',
     fontWeight: 600,
   },
-  status: (isConnected: boolean): React.CSSProperties => ({
-    fontSize: '12px',
-    color: isConnected ? '#90EE90' : '#FFB6C1',
-  }),
   subtitle: {
     padding: '8px 16px',
     backgroundColor: '#f8f9fa',
@@ -242,3 +238,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
   },
 };
+
+const statusStyle = (isConnected: boolean): React.CSSProperties => ({
+  fontSize: '12px',
+  color: isConnected ? '#90EE90' : '#FFB6C1',
+});

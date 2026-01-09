@@ -9,6 +9,7 @@ import type {
   Question,
   GuestbookEntry,
   ChatMessage,
+  User,
 } from '@/types';
 
 class ApiClient {

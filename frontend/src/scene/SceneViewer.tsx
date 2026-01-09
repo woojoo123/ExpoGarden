@@ -125,7 +125,6 @@ export const SceneViewer: React.FC<SceneViewerProps> = ({
       <InteractionPrompt
         visible={cameraMode === 'character' && nearbyBooth !== null}
         boothTitle={nearbyBooth?.title || ''}
-        onInteract={() => nearbyBooth && onBoothClick(nearbyBooth)}
       />
     </>
   );
@@ -149,4 +148,3 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.3s ease',
   },
 };
-

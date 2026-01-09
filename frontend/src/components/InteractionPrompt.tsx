@@ -3,13 +3,11 @@ import React from 'react';
 interface InteractionPromptProps {
   visible: boolean;
   boothTitle: string;
-  onInteract: () => void;
 }
 
 export const InteractionPrompt: React.FC<InteractionPromptProps> = ({
   visible,
   boothTitle,
-  onInteract,
 }) => {
   if (!visible) return null;
 
@@ -80,4 +78,3 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
   },
 };
-

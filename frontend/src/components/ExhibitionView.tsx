@@ -4,12 +4,11 @@ import { useStore } from '@/state/store';
 import { SceneViewer } from '@/scene/SceneViewer';
 import { BoothPanel } from '@/components/BoothPanel';
 import { AdminPanel } from '@/components/AdminPanel';
-import type { Exhibition, Hall, Booth } from '@/types';
+import type { Hall, Booth } from '@/types';
 
 export const ExhibitionView: React.FC = () => {
   const { currentExhibition, currentHall, selectedBooth, setCurrentExhibition, setCurrentHall, setSelectedBooth, sessionId } = useStore();
   
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +16,6 @@ export const ExhibitionView: React.FC = () => {
   // 전시 목록 로드
   useEffect(() => {
     apiClient.getExhibitions('PUBLISHED').then((response) => {
-      setExhibitions(response.data.content);
       if (response.data.content.length > 0) {
         const firstExhibition = response.data.content[0];
         setCurrentExhibition(firstExhibition);

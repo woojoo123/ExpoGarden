@@ -46,7 +46,9 @@ export const OAuthCallback: React.FC = () => {
         console.log('localStorage length:', localStorage.length);
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          console.log(`  ${key}:`, localStorage.getItem(key));
+          if (key) {
+            console.log(`  ${key}:`, localStorage.getItem(key));
+          }
         }
         
         // returnTo 파라미터에 따라 리다이렉트
@@ -105,4 +107,3 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#666',
   },
 };
-

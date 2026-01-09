@@ -84,17 +84,6 @@ export const ShowroomDetailPage: React.FC = () => {
     });
   };
 
-  const handleShareToSocial = (platform: string) => {
-    const link = `${window.location.origin}/showroom/${id}`;
-    const text = `${showroom?.title} - ExpoGarden에서 내 쇼룸 확인하기!`;
-    
-    if (platform === 'twitter') {
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(link)}`);
-    } else if (platform === 'facebook') {
-      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`);
-    }
-  };
-
   if (loading) {
     return (
       <div style={styles.loading}>
@@ -618,4 +607,3 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '16px',
   },
 };
-

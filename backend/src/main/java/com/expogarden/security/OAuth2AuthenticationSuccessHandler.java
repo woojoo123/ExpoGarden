@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -23,6 +24,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     
     private final UserRepository userRepository;
     private final JwtTokenProvider tokenProvider;
+
+    @Value("${app.frontend-base-url:http://localhost}")
+    private String frontendBaseUrl;
     
     @Override
     public void onAuthenticationSuccess(
@@ -68,7 +72,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String refreshToken = tokenProvider.generateRefreshToken(userPrincipal);
         
         // 프론트엔드로 리다이렉트 (토큰을 쿼리 파라미터로 전달)
-        String targetUrl = UriComponentsBuilder.fromUriString("http://localhost:5173/oauth/callback")
+        String targetUrl = UriComponentsBuilder.fromUriString(frontendBaseUrl + "/oauth/callback")
             .queryParam("accessToken", accessToken)
             .queryParam("refreshToken", refreshToken)
             .build().toUriString();
@@ -76,4 +80,3 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 }
-

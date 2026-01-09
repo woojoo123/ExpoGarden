@@ -23,10 +23,8 @@ export class BabylonScene {
   private activeCamera: Camera;
   private cameraMode: CameraMode = 'orbit';
   private characterController: CharacterController | null = null;
-  private canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
     this.engine = new Engine(canvas, true);
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.8, 0.9, 1.0, 1.0);
@@ -113,7 +111,7 @@ export class BabylonScene {
         this.orbitCamera.detachControl();
         this.activeCamera = this.followCamera;
         this.scene.activeCamera = this.followCamera;
-        this.followCamera.attachControl(this.canvas, true);
+        this.followCamera.attachControl(true);
       }
     } else {
       // Switch to orbit mode
@@ -122,7 +120,7 @@ export class BabylonScene {
       }
       this.activeCamera = this.orbitCamera;
       this.scene.activeCamera = this.orbitCamera;
-      this.orbitCamera.attachControl(this.canvas, true);
+      this.orbitCamera.attachControl(true);
     }
   }
 
@@ -150,4 +148,3 @@ export class BabylonScene {
     this.engine.dispose();
   }
 }
-

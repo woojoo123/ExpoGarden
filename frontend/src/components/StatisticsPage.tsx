@@ -153,7 +153,7 @@ export const StatisticsPage: React.FC = () => {
                 {stats.topBooths.map((booth, index) => (
                   <tr key={booth.boothId} style={styles.tr}>
                     <td style={styles.td}>
-                      <span style={styles.rank(index + 1)}>{index + 1}</span>
+                      <span style={rankStyle(index + 1)}>{index + 1}</span>
                     </td>
                     <td style={styles.td}>
                       <strong>{booth.boothTitle}</strong>
@@ -283,15 +283,15 @@ const styles: Record<string, React.CSSProperties> = {
   td: {
     padding: '12px',
   },
-  rank: (position: number): React.CSSProperties => ({
-    display: 'inline-block',
-    width: '30px',
-    height: '30px',
-    lineHeight: '30px',
-    borderRadius: '50%',
-    backgroundColor: position <= 3 ? '#ffc107' : '#e9ecef',
-    color: position <= 3 ? '#fff' : '#333',
-    fontWeight: 'bold',
-  }),
 };
 
+const rankStyle = (position: number): React.CSSProperties => ({
+  display: 'inline-block',
+  width: '30px',
+  height: '30px',
+  lineHeight: '30px',
+  borderRadius: '50%',
+  backgroundColor: position <= 3 ? '#ffc107' : '#e9ecef',
+  color: position <= 3 ? '#fff' : '#333',
+  fontWeight: 'bold',
+});

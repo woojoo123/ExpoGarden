@@ -7,11 +7,48 @@ services:
     environment:
       POSTGRES_DB: expogarden
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d expogarden"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - expogarden-network
+  backend:
+    build: ./backend
+    container_name: expogarden-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expogarden
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_FRONTEND_BASE_URL: ${APP_FRONTEND_BASE_URL}
+      EXPOGARDEN_GOOGLE_CLIENT_ID: ${EXPOGARDEN_GOOGLE_CLIENT_ID}
+      EXPOGARDEN_GOOGLE_CLIENT_SECRET: ${EXPOGARDEN_GOOGLE_CLIENT_SECRET}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - expogarden-network
+  frontend:
+    image: nginx:alpine
+    container_name: expogarden-frontend
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
     networks:
       - expogarden-network
 
@@ -21,4 +58,3 @@ volumes:
 networks:
   expogarden-network:
     driver: bridge
-

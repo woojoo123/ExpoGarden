@@ -7,7 +7,6 @@ import type { Exhibition, Hall, Booth } from '@/types';
 
 export const ExhibitionView2D: React.FC = () => {
   const { sessionId } = useStore();
-  const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +19,6 @@ export const ExhibitionView2D: React.FC = () => {
   // 전시 목록 로드
   useEffect(() => {
     apiClient.getExhibitions('PUBLISHED').then((response) => {
-      setExhibitions(response.data.content);
       if (response.data.content.length > 0) {
         const firstExhibition = response.data.content[0];
         setCurrentExhibition(firstExhibition);
@@ -476,4 +474,3 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#6b7280',
   },
 };
-

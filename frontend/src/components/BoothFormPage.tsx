@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiClient } from '@/api/client';
 import { useStore } from '@/state/store';
-import type { Booth } from '@/types';
 
 interface MediaItem {
   type: 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK';
@@ -231,7 +230,13 @@ export const BoothFormPage: React.FC = () => {
         </button>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); }} style={styles.form}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit();
+        }}
+        style={styles.form}
+      >
         <div style={styles.section}>
           <h2>기본 정보</h2>
 
@@ -635,4 +640,3 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '1.6',
   },
 };
-

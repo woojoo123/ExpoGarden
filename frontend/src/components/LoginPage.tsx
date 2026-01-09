@@ -47,7 +47,6 @@ export const LoginPage: React.FC = () => {
 
   const handleGoogleLogin = () => {
     // Google OAuth 로그인 (기존)
-    const returnTo = localStorage.getItem('returnTo') || 'main';
     window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
   };
 
@@ -283,4 +282,3 @@ const styles: Record<string, React.CSSProperties> = {
     textDecoration: 'underline',
   },
 };
-

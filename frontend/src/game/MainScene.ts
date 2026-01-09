@@ -56,7 +56,6 @@ export class MainScene extends Phaser.Scene {
   // private slots: ExpoSlot[] = [];
   // private worldSlots: WorldSlot[] = [];
   // private activeSlot: WorldSlot | null = null;
-  private bgScale: number = 1; // 배경 스케일은 여전히 필요
   // private debugZoneGraphics: Phaser.GameObjects.Graphics[] = [];
   // private debugZonesVisible: boolean = false;
 
@@ -544,7 +543,6 @@ export class MainScene extends Phaser.Scene {
     const scale = Math.max(scaleX, scaleY);
 
     this.background.setScale(scale);
-    this.bgScale = scale; // 스케일 저장
 
     // 배경이 화면 중앙에 오도록 위치 조정
     const scaledWidth = naturalWidth * scale;
