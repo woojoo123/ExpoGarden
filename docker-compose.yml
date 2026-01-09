@@ -20,7 +20,9 @@ services:
     networks:
       - expogarden-network
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.runtime
     container_name: expogarden-backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expogarden
@@ -40,8 +42,11 @@ services:
     networks:
       - expogarden-network
   frontend:
-    build: ./frontend
+    image: nginx:alpine
     container_name: expogarden-frontend
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
     depends_on:
