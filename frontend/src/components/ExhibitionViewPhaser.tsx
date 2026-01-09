@@ -21,6 +21,7 @@ export const ExhibitionViewPhaser: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hallChatMessage, setHallChatMessage] = useState('');
 
   const FIXED_EXHIBITION_ID = 1;
 
@@ -231,6 +232,16 @@ export const ExhibitionViewPhaser: React.FC = () => {
     navigate(`/metaverse/${hallId}`);
   };
 
+  const handleSendHallChat = (event: React.FormEvent) => {
+    event.preventDefault();
+    const text = hallChatMessage.trim();
+    if (!text) return;
+
+    const scene = gameRef.current?.scene.getScene('MainScene') as MainScene | undefined;
+    scene?.sendHallChatMessage(text);
+    setHallChatMessage('');
+  };
+
   return (
     <div style={styles.container}>
       {/* 상단 헤더 */}
@@ -291,6 +302,24 @@ export const ExhibitionViewPhaser: React.FC = () => {
       {selectedBooth && (
         <BoothPanel booth={selectedBooth} onClose={() => setSelectedBooth(null)} />
       )}
+
+      {/* 홀 채팅 입력 */}
+      <form style={styles.hallChatForm} onSubmit={handleSendHallChat}>
+        <input
+          type="text"
+          value={hallChatMessage}
+          onChange={(event) => setHallChatMessage(event.target.value)}
+          placeholder="홀 채팅 입력... (Enter 전송)"
+          style={styles.hallChatInput}
+        />
+        <button
+          type="submit"
+          style={styles.hallChatButton}
+          disabled={!hallChatMessage.trim()}
+        >
+          전송
+        </button>
+      </form>
 
       {/* 조작 안내 */}
       <div style={styles.controls}>
@@ -477,6 +506,39 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #d4c5a9',
     zIndex: 100,
   },
+  hallChatForm: {
+    position: 'fixed',
+    bottom: '84px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    display: 'flex',
+    gap: '8px',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: '10px 14px',
+    borderRadius: '10px',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+    border: '1px solid #d4c5a9',
+    zIndex: 100,
+    width: 'min(480px, 90vw)',
+  },
+  hallChatInput: {
+    flex: 1,
+    padding: '8px 10px',
+    border: '1px solid #d4c5a9',
+    borderRadius: '8px',
+    fontSize: '13px',
+    outline: 'none',
+  },
+  hallChatButton: {
+    padding: '8px 12px',
+    borderRadius: '8px',
+    border: 'none',
+    backgroundColor: '#5b4cdb',
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
   controlItem: {
     display: 'flex',
     alignItems: 'center',
@@ -498,4 +560,3 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#333333',
   },
 };
-

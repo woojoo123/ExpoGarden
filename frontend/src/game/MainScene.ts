@@ -2,6 +2,13 @@ import Phaser from 'phaser';
 import type { Booth } from '@/types';
 import type { Direction } from '@/constants/characters';
 import { MultiplayerService, type PlayerPosition } from '@/services/MultiplayerService';
+import { HallChatService, type HallChatMessage } from '@/services/HallChatService';
+
+type ChatBubble = {
+  container: Phaser.GameObjects.Container;
+  background: Phaser.GameObjects.Graphics;
+  text: Phaser.GameObjects.Text;
+};
 
 // 슬롯 타입 정의 (비활성화 - 원래 그리드 배치 방식 사용)
 // type ExpoSlot = {
@@ -50,6 +57,10 @@ export class MainScene extends Phaser.Scene {
   private otherPlayers: Map<number, Phaser.Physics.Arcade.Sprite> = new Map(); // userId -> 스프라이트
   private otherPlayerNames: Map<number, Phaser.GameObjects.Text> = new Map(); // userId -> 닉네임 텍스트
   private multiplayerService: MultiplayerService | null = null;
+  private hallChatService: HallChatService | null = null;
+  private chatBubbles: Map<number, ChatBubble> = new Map();
+  private chatBubbleTimers: Map<number, Phaser.Time.TimerEvent> = new Map();
+  private readonly CHAT_BUBBLE_DURATION_MS = 5000;
   // lastPositionSent는 MultiplayerService 내부에서 관리하므로 제거
   
   // 슬롯 시스템 관련 필드 (비활성화 - 원래 그리드 배치 방식 사용)
@@ -213,7 +224,7 @@ export class MainScene extends Phaser.Scene {
         align: 'center',
       });
       this.playerNameText.setDepth(20); // 플레이어보다 위에 표시
-      this.playerNameText.setOrigin(0.5, 1); // 중앙 정렬, 아래쪽 기준
+      this.playerNameText.setOrigin(0.5, 0); // 중앙 정렬, 위쪽 기준
     }
     
     console.log('[MainScene] 플레이어 생성 완료:', {
@@ -293,6 +304,7 @@ export class MainScene extends Phaser.Scene {
     // userId가 null이어도 익명 사용자로 처리 가능
     if (this.hallId !== null) {
       this.initializeMultiplayer();
+      this.initializeHallChat();
     }
   }
 
@@ -475,7 +487,7 @@ export class MainScene extends Phaser.Scene {
 
     // 플레이어 닉네임 텍스트 위치 업데이트 (플레이어 머리 위)
     if (this.playerNameText) {
-      this.playerNameText.setPosition(this.player.x, this.player.y - this.player.displayHeight / 2 - 5);
+      this.playerNameText.setPosition(this.player.x, this.player.y + this.player.displayHeight / 2 + 6);
     }
 
     // 근처 쇼룸 체크
@@ -499,9 +511,12 @@ export class MainScene extends Phaser.Scene {
     for (const [userId, player] of this.otherPlayers.entries()) {
       const nameText = this.otherPlayerNames.get(userId);
       if (nameText && player.active) {
-        nameText.setPosition(player.x, player.y - player.displayHeight / 2 - 5);
+        nameText.setPosition(player.x, player.y + player.displayHeight / 2 + 6);
       }
     }
+
+    // 채팅 말풍선 위치 업데이트
+    this.updateChatBubblePositions();
 
     // 씬이 종료될 때 리사이즈 이벤트 정리
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -891,6 +906,24 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
+   * 홀 채팅 서비스 초기화
+   */
+  private initializeHallChat() {
+    if (this.hallId === null) {
+      console.warn('[MainScene] 홀 채팅 초기화 실패: hallId가 없음');
+      return;
+    }
+
+    const effectiveUserId = this.userId ?? -1;
+    const nickname = this.userNickname || '게스트';
+
+    this.hallChatService = new HallChatService();
+    this.hallChatService.connect(this.hallId, effectiveUserId, nickname, (message: HallChatMessage) => {
+      this.handleHallChatMessage(message);
+    });
+  }
+
+  /**
    * 다른 플레이어 업데이트 처리
    */
   private handlePlayerUpdate(position: PlayerPosition) {
@@ -921,6 +954,17 @@ export class MainScene extends Phaser.Scene {
         this.removeOtherPlayer(position.userId);
         break;
     }
+  }
+
+  /**
+   * 홀 채팅 메시지 처리
+   */
+  private handleHallChatMessage(message: HallChatMessage) {
+    if (!message.message) {
+      return;
+    }
+
+    this.showChatBubble(message.userId, message.message);
   }
 
   /**
@@ -956,7 +1000,7 @@ export class MainScene extends Phaser.Scene {
     this.otherPlayers.set(userId, otherPlayer);
 
     // 닉네임 텍스트 생성
-    const nameText = this.add.text(x, y - otherPlayer.displayHeight / 2 - 5, nickname, {
+    const nameText = this.add.text(x, y + otherPlayer.displayHeight / 2 + 6, nickname, {
       fontSize: '14px',
       fontFamily: 'Arial',
       color: '#ffffff',
@@ -965,7 +1009,7 @@ export class MainScene extends Phaser.Scene {
       align: 'center',
     });
     nameText.setDepth(20);
-    nameText.setOrigin(0.5, 1);
+    nameText.setOrigin(0.5, 0);
 
     this.otherPlayerNames.set(userId, nameText);
   }
@@ -992,7 +1036,7 @@ export class MainScene extends Phaser.Scene {
       this.tweens.add({
         targets: nameText,
         x: x,
-        y: y - (player ? player.displayHeight / 2 + 5 : 0),
+        y: y + (player ? player.displayHeight / 2 + 6 : 0),
         duration: 100,
         ease: 'Linear',
       });
@@ -1017,6 +1061,8 @@ export class MainScene extends Phaser.Scene {
       nameText.destroy();
       this.otherPlayerNames.delete(userId);
     }
+
+    this.removeChatBubble(userId);
   }
 
   /**
@@ -1028,6 +1074,11 @@ export class MainScene extends Phaser.Scene {
       this.multiplayerService = null;
     }
 
+    if (this.hallChatService) {
+      this.hallChatService.disconnect();
+      this.hallChatService = null;
+    }
+
     // 모든 다른 플레이어 제거
     for (const [userId, player] of this.otherPlayers.entries()) {
       player.destroy();
@@ -1035,8 +1086,156 @@ export class MainScene extends Phaser.Scene {
       if (nameText) {
         nameText.destroy();
       }
+      this.removeChatBubble(userId);
     }
     this.otherPlayers.clear();
     this.otherPlayerNames.clear();
+  }
+
+  /**
+   * 홀 채팅 전송 (UI에서 호출)
+   */
+  public sendHallChatMessage(message: string) {
+    if (!this.hallChatService || !message.trim()) {
+      return;
+    }
+
+    this.hallChatService.sendMessage(message.trim());
+
+    // 로컬 플레이어도 즉시 말풍선 표시
+    const effectiveUserId = this.userId ?? -1;
+    this.showChatBubble(effectiveUserId, message.trim());
+  }
+
+  private showChatBubble(userId: number, message: string) {
+    const target = this.getPlayerSpriteByUserId(userId);
+    if (!target) {
+      return;
+    }
+
+    let bubble = this.chatBubbles.get(userId);
+    if (!bubble) {
+      const background = this.add.graphics();
+      const text = this.add.text(0, 0, message, {
+        fontSize: '12px',
+        fontFamily: 'Arial',
+        color: '#111111',
+        align: 'center',
+        wordWrap: { width: 180 },
+      });
+      text.setOrigin(0.5, 0.5);
+
+      const container = this.add.container(0, 0, [background, text]);
+      container.setDepth(30);
+
+      bubble = { container, background, text };
+      this.chatBubbles.set(userId, bubble);
+    } else {
+      bubble.text.setText(message);
+    }
+
+    this.redrawChatBubble(bubble);
+    this.updateChatBubblePosition(userId, target);
+
+    const existingTimer = this.chatBubbleTimers.get(userId);
+    if (existingTimer) {
+      existingTimer.remove(false);
+    }
+
+    const timer = this.time.delayedCall(this.CHAT_BUBBLE_DURATION_MS, () => {
+      this.removeChatBubble(userId);
+    });
+    this.chatBubbleTimers.set(userId, timer);
+  }
+
+  private updateChatBubblePositions() {
+    for (const [userId, bubble] of this.chatBubbles.entries()) {
+      const target = this.getPlayerSpriteByUserId(userId);
+      if (!target || !bubble.container.active) {
+        continue;
+      }
+      this.updateChatBubblePosition(userId, target);
+    }
+  }
+
+  private updateChatBubblePosition(userId: number, target: Phaser.Physics.Arcade.Sprite) {
+    const bubble = this.chatBubbles.get(userId);
+    if (!bubble) {
+      return;
+    }
+    bubble.container.setPosition(target.x, target.y - target.displayHeight / 2 - 6);
+  }
+
+  private getPlayerSpriteByUserId(userId: number): Phaser.Physics.Arcade.Sprite | null {
+    const effectiveUserId = this.userId ?? -1;
+    if (userId === effectiveUserId) {
+      return this.player ?? null;
+    }
+    return this.otherPlayers.get(userId) ?? null;
+  }
+
+  private removeChatBubble(userId: number) {
+    const bubble = this.chatBubbles.get(userId);
+    if (bubble) {
+      bubble.container.destroy();
+      this.chatBubbles.delete(userId);
+    }
+
+    const timer = this.chatBubbleTimers.get(userId);
+    if (timer) {
+      timer.remove(false);
+      this.chatBubbleTimers.delete(userId);
+    }
+  }
+
+  private redrawChatBubble(bubble: ChatBubble) {
+    const paddingX = 10;
+    const paddingY = 6;
+    const radius = 8;
+
+    const textBounds = bubble.text.getBounds();
+    const bubbleWidth = textBounds.width + paddingX * 2;
+    const bubbleHeight = textBounds.height + paddingY * 2;
+    const tailHeight = 8;
+    const tailWidth = 12;
+
+    bubble.background.clear();
+    bubble.background.fillStyle(0xffffff, 0.95);
+    bubble.background.lineStyle(2, 0x111111, 0.15);
+
+    bubble.background.fillRoundedRect(
+      -bubbleWidth / 2,
+      -bubbleHeight,
+      bubbleWidth,
+      bubbleHeight,
+      radius
+    );
+    bubble.background.strokeRoundedRect(
+      -bubbleWidth / 2,
+      -bubbleHeight,
+      bubbleWidth,
+      bubbleHeight,
+      radius
+    );
+
+    bubble.background.fillTriangle(
+      -tailWidth / 2,
+      0,
+      tailWidth / 2,
+      0,
+      0,
+      tailHeight
+    );
+    bubble.background.lineStyle(2, 0x111111, 0.15);
+    bubble.background.strokeTriangle(
+      -tailWidth / 2,
+      0,
+      tailWidth / 2,
+      0,
+      0,
+      tailHeight
+    );
+
+    bubble.text.setPosition(0, -bubbleHeight / 2);
   }
 }
