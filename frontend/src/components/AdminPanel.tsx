@@ -26,7 +26,8 @@ export const AdminPanel: React.FC = () => {
 
   const handleOAuthLogin = () => {
     // 구글 OAuth 로그인 페이지로 이동
-    window.location.href = 'http://localhost:8080/api/oauth2/authorization/google';
+    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8080';
+    window.location.href = `${apiBaseUrl.replace(/\/$/, '')}/api/oauth2/authorization/google`;
   };
 
   const handleLogout = async () => {
