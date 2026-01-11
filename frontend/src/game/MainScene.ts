@@ -389,7 +389,7 @@ export class MainScene extends Phaser.Scene {
 
     // 시작 위치 (왼쪽 위, 약간 왼쪽으로 이동)
     const offsetX = worldWidth * -0.02; // 왼쪽으로 2% 이동
-    const offsetY = worldHeight * 0.05; // 아래로 5% 이동
+    const offsetY = worldHeight * 0.12; // 아래로 12% 이동
     const startX = marginX + boothWidth / 2 + offsetX;
     const startY = marginY + boothHeight / 2 + offsetY;
 
