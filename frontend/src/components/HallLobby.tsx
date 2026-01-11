@@ -19,12 +19,13 @@ export const HallLobby: React.FC = () => {
       // 전시 1의 모든 홀 로드
       const hallsResponse = await apiClient.getHalls(1);
       const hallsData = hallsResponse.data;
-      setHalls(hallsData);
+      const sortedHalls = [...hallsData].sort((a, b) => a.id - b.id);
+      setHalls(sortedHalls);
 
       // 각 홀의 부스 개수 조회
       const counts: Record<number, number> = {};
       await Promise.all(
-        hallsData.map(async (hall) => {
+        sortedHalls.map(async (hall) => {
           try {
             const boothsResponse = await apiClient.getBooths({
               exhibitionId: 1,
@@ -248,4 +249,3 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: '1.6',
   },
 };
-
