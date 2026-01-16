@@ -47,8 +47,7 @@ export const LoginPage: React.FC = () => {
 
   const handleGoogleLogin = () => {
     // Google OAuth 로그인 (기존)
-    const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8080';
-    window.location.href = `${apiBaseUrl.replace(/\/$/, '')}/api/oauth2/authorization/google`;
+    window.location.href = '/api/oauth2/authorization/google';
   };
 
   return (

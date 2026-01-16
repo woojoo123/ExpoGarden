@@ -140,13 +140,23 @@ export const BoothFormPage: React.FC = () => {
     setUploadingThumbnail(true);
     try {
       const response = await apiClient.uploadFile(file);
+      const uploadedUrl = response.data?.url;
+      if (!uploadedUrl) {
+        throw new Error('업로드 응답에 URL이 없습니다.');
+      }
       setFormData({
         ...formData,
-        thumbnailUrl: response.data.url,
+        thumbnailUrl: uploadedUrl,
       });
       alert('썸네일 업로드 완료!');
-    } catch (error) {
-      alert('썸네일 업로드 실패');
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        '썸네일 업로드 실패';
+      console.error('썸네일 업로드 실패:', error);
+      alert(errorMessage);
     } finally {
       setUploadingThumbnail(false);
     }

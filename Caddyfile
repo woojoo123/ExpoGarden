@@ -1,0 +1,12 @@
+expogarden.duckdns.org {
+  encode gzip
+  handle /api/* {
+    reverse_proxy backend:8080
+  }
+
+  handle {
+    root * /usr/share/caddy
+    try_files {path} /index.html
+    file_server
+  }
+}

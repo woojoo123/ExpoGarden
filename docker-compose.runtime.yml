@@ -19,11 +19,11 @@ services:
       retries: 10
     networks:
       - expogarden-network
+
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.runtime
+    image: eclipse-temurin:17-jre
     container_name: expogarden-backend
+    working_dir: /app
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expogarden
       SPRING_DATASOURCE_USERNAME: postgres
@@ -33,15 +33,18 @@ services:
       SERVER_FORWARD_HEADERS_STRATEGY: framework
       EXPOGARDEN_GOOGLE_CLIENT_ID: ${EXPOGARDEN_GOOGLE_CLIENT_ID}
       EXPOGARDEN_GOOGLE_CLIENT_SECRET: ${EXPOGARDEN_GOOGLE_CLIENT_SECRET}
+    command: ["java", "-jar", "/app/app.jar"]
     ports:
       - "8080:8080"
     volumes:
+      - ./backend/build/libs/app.jar:/app/app.jar:ro
       - ./backend/uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - expogarden-network
+
   caddy:
     image: caddy:2
     container_name: expogarden-caddy
